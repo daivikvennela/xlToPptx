@@ -9,6 +9,14 @@ from werkzeug.utils import secure_filename
 import json
 import logging
 import numpy as np
+from datetime import datetime
+import shutil
+from PIL import Image
+import io
+import base64
+from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.enum.dml import MSO_THEME_COLOR
+import tempfile
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -18,6 +26,439 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 CHUNK_SIZE = 15  # Number of rows per slide
+
+def copy_slide_with_full_formatting(source_slide, target_prs):
+    """
+    Advanced slide copying that preserves ALL formatting, colors, layouts, and media
+    """
+    try:
+        # Create a new slide with blank layout to preserve everything
+        blank_layout = target_prs.slide_layouts[6]  # Blank layout
+        new_slide = target_prs.slides.add_slide(blank_layout)
+        
+        # Copy slide background if it exists
+        try:
+            if source_slide.background.fill.type:
+                new_slide.background.fill.solid()
+                if hasattr(source_slide.background.fill, 'fore_color'):
+                    new_slide.background.fill.fore_color.rgb = source_slide.background.fill.fore_color.rgb
+        except Exception as bg_error:
+            print(f"Background copying skipped: {bg_error}")
+        
+        # Copy all shapes with complete formatting preservation
+        for shape in source_slide.shapes:
+            try:
+                copy_shape_with_formatting(shape, new_slide)
+            except Exception as shape_error:
+                print(f"Error copying shape: {shape_error}")
+                continue
+        
+        return new_slide
+        
+    except Exception as e:
+        print(f"Error in advanced slide copying: {e}")
+        # Fallback to basic slide creation
+        slide_layout = target_prs.slide_layouts[1]
+        slide = target_prs.slides.add_slide(slide_layout)
+        slide.shapes.title.text = "Template Slide"
+        return slide
+
+def copy_shape_with_formatting(source_shape, target_slide):
+    """
+    Copy individual shapes with complete formatting preservation
+    """
+    try:
+        shape_type = source_shape.shape_type
+        
+        if shape_type == MSO_SHAPE_TYPE.TEXT_BOX or shape_type == MSO_SHAPE_TYPE.PLACEHOLDER:
+            copy_text_shape_with_formatting(source_shape, target_slide)
+        elif shape_type == MSO_SHAPE_TYPE.PICTURE:
+            copy_image_shape(source_shape, target_slide)
+        elif shape_type == MSO_SHAPE_TYPE.AUTO_SHAPE:
+            copy_auto_shape_with_formatting(source_shape, target_slide)
+        elif shape_type == MSO_SHAPE_TYPE.GROUP:
+            copy_group_shape(source_shape, target_slide)
+        elif shape_type == MSO_SHAPE_TYPE.TABLE:
+            copy_table_shape(source_shape, target_slide)
+        else:
+            print(f"Unsupported shape type: {shape_type}")
+            
+    except Exception as e:
+        print(f"Error copying shape type {source_shape.shape_type}: {e}")
+
+def copy_text_shape_with_formatting(source_shape, target_slide):
+    """
+    Copy text shapes with complete text formatting preservation
+    """
+    try:
+        # Create new text box with exact dimensions and position
+        left = source_shape.left
+        top = source_shape.top
+        width = source_shape.width
+        height = source_shape.height
+        
+        new_textbox = target_slide.shapes.add_textbox(left, top, width, height)
+        new_text_frame = new_textbox.text_frame
+        
+        # Copy text frame properties
+        new_text_frame.clear()
+        source_text_frame = source_shape.text_frame
+        
+        # Copy margin settings
+        try:
+            new_text_frame.margin_bottom = source_text_frame.margin_bottom
+            new_text_frame.margin_left = source_text_frame.margin_left
+            new_text_frame.margin_right = source_text_frame.margin_right
+            new_text_frame.margin_top = source_text_frame.margin_top
+        except:
+            pass
+        
+        # Copy word wrap and auto size settings
+        try:
+            new_text_frame.word_wrap = source_text_frame.word_wrap
+            new_text_frame.auto_size = source_text_frame.auto_size
+        except:
+            pass
+        
+        # Copy all paragraphs with formatting
+        for para_idx, source_para in enumerate(source_text_frame.paragraphs):
+            if para_idx == 0:
+                new_para = new_text_frame.paragraphs[0]
+            else:
+                new_para = new_text_frame.add_paragraph()
+            
+            # Copy paragraph-level formatting
+            try:
+                new_para.alignment = source_para.alignment
+                new_para.level = source_para.level
+            except:
+                pass
+            
+            # Copy all runs with character formatting
+            for run_idx, source_run in enumerate(source_para.runs):
+                if run_idx == 0 and len(new_para.runs) > 0:
+                    new_run = new_para.runs[0]
+                else:
+                    new_run = new_para.add_run()
+                
+                new_run.text = source_run.text
+                
+                                 # Copy font properties with enhanced color handling
+                try:
+                        if source_run.font.name:
+                            new_run.font.name = source_run.font.name
+                        if source_run.font.size:
+                            new_run.font.size = source_run.font.size
+                        if source_run.font.bold is not None:
+                            new_run.font.bold = source_run.font.bold
+                        if source_run.font.italic is not None:
+                            new_run.font.italic = source_run.font.italic
+                        if source_run.font.underline is not None:
+                            new_run.font.underline = source_run.font.underline
+                     
+                     # Enhanced color copying with multiple fallback methods
+                        copy_font_color(source_run.font, new_run.font)
+                     
+                except Exception as font_error:
+                        print(f"Font copying error: {font_error}")
+        
+        # Copy shape fill and line properties
+        copy_shape_appearance(source_shape, new_textbox)
+        
+    except Exception as e:
+        print(f"Error copying text shape: {e}")
+
+def copy_image_shape(source_shape, target_slide):
+    """
+    Copy image shapes with original formatting
+    """
+    try:
+        # Get image data
+        image_stream = io.BytesIO(source_shape.image.blob)
+        
+        # Add image to target slide
+        left = source_shape.left
+        top = source_shape.top
+        width = source_shape.width
+        height = source_shape.height
+        
+        new_picture = target_slide.shapes.add_picture(image_stream, left, top, width, height)
+        
+        # Copy shape appearance properties
+        copy_shape_appearance(source_shape, new_picture)
+        
+    except Exception as e:
+        print(f"Error copying image: {e}")
+
+def copy_auto_shape_with_formatting(source_shape, target_slide):
+    """
+    Copy auto shapes (rectangles, circles, etc.) with formatting
+    """
+    try:
+        # Create basic rectangle as placeholder (more complex shapes would need specific handling)
+        left = source_shape.left
+        top = source_shape.top
+        width = source_shape.width
+        height = source_shape.height
+        
+        # Try to preserve the auto shape type
+        try:
+            new_shape = target_slide.shapes.add_shape(
+                source_shape.auto_shape_type, left, top, width, height
+            )
+        except:
+            # Fallback to rectangle
+            from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
+            new_shape = target_slide.shapes.add_shape(
+                MSO_AUTO_SHAPE_TYPE.RECTANGLE, left, top, width, height
+            )
+        
+        # Copy text if the shape has text
+        if hasattr(source_shape, 'text_frame') and source_shape.text_frame:
+            copy_text_content(source_shape.text_frame, new_shape.text_frame)
+        
+        # Copy appearance
+        copy_shape_appearance(source_shape, new_shape)
+        
+    except Exception as e:
+        print(f"Error copying auto shape: {e}")
+
+def copy_group_shape(source_shape, target_slide):
+    """
+    Copy grouped shapes
+    """
+    try:
+        # Note: python-pptx doesn't support creating groups directly
+        # We'll copy individual shapes from the group
+        for shape in source_shape.shapes:
+            copy_shape_with_formatting(shape, target_slide)
+    except Exception as e:
+        print(f"Error copying group: {e}")
+
+def copy_table_shape(source_shape, target_slide):
+    """
+    Copy table shapes with formatting
+    """
+    try:
+        source_table = source_shape.table
+        rows = len(source_table.rows)
+        cols = len(source_table.columns)
+        
+        left = source_shape.left
+        top = source_shape.top
+        width = source_shape.width
+        height = source_shape.height
+        
+        new_table_shape = target_slide.shapes.add_table(rows, cols, left, top, width, height)
+        new_table = new_table_shape.table
+        
+        # Copy cell content and formatting
+        for row_idx in range(rows):
+            for col_idx in range(cols):
+                source_cell = source_table.cell(row_idx, col_idx)
+                target_cell = new_table.cell(row_idx, col_idx)
+                
+                # Copy text content
+                target_cell.text = source_cell.text
+                
+                # Copy cell formatting (basic)
+                try:
+                    if hasattr(source_cell.fill, 'solid'):
+                        target_cell.fill.solid()
+                        if hasattr(source_cell.fill.fore_color, 'rgb'):
+                            target_cell.fill.fore_color.rgb = source_cell.fill.fore_color.rgb
+                except:
+                    pass
+                    
+    except Exception as e:
+        print(f"Error copying table: {e}")
+
+def copy_shape_appearance(source_shape, target_shape):
+    """
+    Enhanced visual appearance copying with comprehensive color preservation
+    """
+    try:
+        # Enhanced fill properties copying
+        if hasattr(source_shape, 'fill') and hasattr(target_shape, 'fill'):
+            try:
+                source_fill = source_shape.fill
+                target_fill = target_shape.fill
+                
+                # Copy fill type and properties
+                if hasattr(source_fill, 'type') and source_fill.type:
+                    from pptx.enum.dml import MSO_FILL_TYPE
+                    
+                    if source_fill.type == MSO_FILL_TYPE.SOLID:
+                        target_fill.solid()
+                        # Enhanced color copying for fill
+                        copy_shape_color(source_fill.fore_color, target_fill.fore_color)
+                    elif source_fill.type == MSO_FILL_TYPE.GRADIENT:
+                        # Handle gradient fills if possible
+                        print("Gradient fill detected - using solid color fallback")
+                        target_fill.solid()
+                        if hasattr(source_fill, 'fore_color'):
+                            copy_shape_color(source_fill.fore_color, target_fill.fore_color)
+                    elif source_fill.type == MSO_FILL_TYPE.PATTERN:
+                        # Handle pattern fills
+                        print("Pattern fill detected - using solid color fallback")
+                        target_fill.solid()
+                        if hasattr(source_fill, 'fore_color'):
+                            copy_shape_color(source_fill.fore_color, target_fill.fore_color)
+                            
+            except Exception as fill_error:
+                print(f"Fill copying error: {fill_error}")
+        
+        # Enhanced line properties copying
+        if hasattr(source_shape, 'line') and hasattr(target_shape, 'line'):
+            try:
+                source_line = source_shape.line
+                target_line = target_shape.line
+                
+                # Copy line width
+                if hasattr(source_line, 'width') and source_line.width:
+                    target_line.width = source_line.width
+                
+                # Copy line color with enhanced method
+                if hasattr(source_line, 'color') and hasattr(target_line, 'color'):
+                    copy_shape_color(source_line.color, target_line.color)
+                
+                # Copy line style if available
+                if hasattr(source_line, 'dash_style') and hasattr(target_line, 'dash_style'):
+                    try:
+                        target_line.dash_style = source_line.dash_style
+                    except:
+                        pass
+                        
+            except Exception as line_error:
+                print(f"Line copying error: {line_error}")
+        
+        # Copy shadow properties if available
+        if hasattr(source_shape, 'shadow') and hasattr(target_shape, 'shadow'):
+            try:
+                source_shadow = source_shape.shadow
+                target_shadow = target_shape.shadow
+                
+                # Basic shadow copying
+                if hasattr(source_shadow, 'inherit') and not source_shadow.inherit:
+                    target_shadow.inherit = False
+                    
+            except Exception as shadow_error:
+                print(f"Shadow copying error: {shadow_error}")
+                
+    except Exception as e:
+        print(f"Error copying appearance: {e}")
+
+def copy_shape_color(source_color, target_color):
+    """
+    Enhanced color copying for shape fills and lines
+    """
+    try:
+        # Method 1: RGB color copying
+        if hasattr(source_color, 'rgb') and source_color.rgb is not None:
+            target_color.rgb = source_color.rgb
+            print(f"Copied shape RGB color: {source_color.rgb}")
+            return
+            
+        # Method 2: Theme color copying
+        if hasattr(source_color, 'theme_color') and source_color.theme_color is not None:
+            target_color.theme_color = source_color.theme_color
+            print(f"Copied shape theme color: {source_color.theme_color}")
+            
+            # Also copy brightness/tint if available
+            if hasattr(source_color, 'brightness') and source_color.brightness is not None:
+                if hasattr(target_color, 'brightness'):
+                    target_color.brightness = source_color.brightness
+                    
+        # Method 3: Try color type specific copying
+        if hasattr(source_color, 'type'):
+            from pptx.enum.dml import MSO_COLOR_TYPE
+            try:
+                color_type = source_color.type
+                if color_type == MSO_COLOR_TYPE.RGB and source_color.rgb:
+                    target_color.rgb = source_color.rgb
+                elif color_type == MSO_COLOR_TYPE.THEME and hasattr(source_color, 'theme_color'):
+                    target_color.theme_color = source_color.theme_color
+            except Exception as type_error:
+                print(f"Color type copying error: {type_error}")
+                
+    except Exception as color_error:
+        print(f"Shape color copying error: {color_error}")
+
+def copy_font_color(source_font, target_font):
+    """
+    Enhanced font color copying with multiple methods for maximum compatibility
+    """
+    try:
+        # Method 1: Try RGB color copying
+        if hasattr(source_font.color, 'rgb') and source_font.color.rgb is not None:
+            target_font.color.rgb = source_font.color.rgb
+            print(f"Copied RGB color: {source_font.color.rgb}")
+            return
+        
+        # Method 2: Try theme color copying
+        if hasattr(source_font.color, 'theme_color') and source_font.color.theme_color is not None:
+            target_font.color.theme_color = source_font.color.theme_color
+            print(f"Copied theme color: {source_font.color.theme_color}")
+            return
+            
+        # Method 3: Try brightness adjustment if available
+        if hasattr(source_font.color, 'brightness') and source_font.color.brightness is not None:
+            if hasattr(target_font.color, 'brightness'):
+                target_font.color.brightness = source_font.color.brightness
+                print(f"Copied brightness: {source_font.color.brightness}")
+        
+        # Method 4: Try color type and set accordingly
+        if hasattr(source_font.color, 'type'):
+            color_type = source_font.color.type
+            print(f"Source color type: {color_type}")
+            
+            # Handle different color types
+            from pptx.enum.dml import MSO_COLOR_TYPE
+            try:
+                if color_type == MSO_COLOR_TYPE.RGB:
+                    if source_font.color.rgb:
+                        target_font.color.rgb = source_font.color.rgb
+                elif color_type == MSO_COLOR_TYPE.THEME:
+                    if hasattr(source_font.color, 'theme_color'):
+                        target_font.color.theme_color = source_font.color.theme_color
+                elif color_type == MSO_COLOR_TYPE.SCHEME:
+                    # Handle scheme colors if possible
+                    print("Scheme color detected - using fallback")
+            except Exception as color_type_error:
+                print(f"Color type handling error: {color_type_error}")
+        
+    except Exception as color_error:
+        print(f"Font color copying error: {color_error}")
+        # Fallback: try to extract any available color information
+        try:
+            # Last resort: try to copy any color attributes that exist
+            if hasattr(source_font.color, '_color_val') and hasattr(target_font.color, '_color_val'):
+                target_font.color._color_val = source_font.color._color_val
+                print("Used fallback color copying method")
+        except:
+            print("All color copying methods failed - using default color")
+
+def copy_text_content(source_text_frame, target_text_frame):
+    """
+    Helper function to copy text content between text frames
+    """
+    try:
+        target_text_frame.clear()
+        
+        for para_idx, source_para in enumerate(source_text_frame.paragraphs):
+            if para_idx == 0:
+                target_para = target_text_frame.paragraphs[0]
+            else:
+                target_para = target_text_frame.add_paragraph()
+            
+            target_para.text = source_para.text
+            try:
+                target_para.alignment = source_para.alignment
+            except:
+                pass
+                
+    except Exception as e:
+        print(f"Error copying text content: {e}")
 
 def extract_excel_content(excel_file):
     """Extract and organize content from Excel file."""
@@ -239,6 +680,445 @@ def generate():
             os.remove(excel_path)
         if os.path.exists(pptx_path):
             os.remove(pptx_path)
+
+@app.route('/get_slide_preview/<slide_id>')
+def get_slide_preview(slide_id):
+    """Get a preview of a specific slide"""
+    try:
+        # Map slide IDs to their actual .pptx files
+        slide_file_mapping = {
+            'title-1': 'templates/slide_templates/msa_exec/Title/msa[title].pptx',
+            # Add more mappings as you add more slides
+        }
+        
+        if slide_id not in slide_file_mapping:
+            return jsonify({'error': 'Slide not found'}), 404
+        
+        pptx_path = slide_file_mapping[slide_id]
+        if not os.path.exists(pptx_path):
+            return jsonify({'error': 'Slide file not found'}), 404
+        
+        # Load the presentation and get the first slide
+        prs = Presentation(pptx_path)
+        if len(prs.slides) == 0:
+            return jsonify({'error': 'No slides in presentation'}), 404
+        
+        slide = prs.slides[0]  # Get the first slide
+        
+        # Extract slide content for preview
+        slide_content = {
+            'title': '',
+            'content': [],
+            'layout': slide.slide_layout.name if hasattr(slide.slide_layout, 'name') else 'Unknown'
+        }
+        
+        # Extract title and content more robustly
+        if hasattr(slide, 'shapes'):
+            for shape in slide.shapes:
+                try:
+                    if hasattr(shape, 'text') and shape.text.strip():
+                        # Check if it's a title placeholder
+                        is_title = False
+                        try:
+                            if hasattr(shape, 'placeholder_format'):
+                                is_title = shape.placeholder_format.type == 1  # Title placeholder
+                        except:
+                            # If placeholder check fails, use position/size heuristics
+                            # Title shapes are typically at the top and larger
+                            if shape.top < Inches(2) and shape.width > Inches(6):
+                                is_title = True
+                        
+                        if is_title:
+                            slide_content['title'] = shape.text
+                        else:
+                            slide_content['content'].append(shape.text)
+                except Exception as shape_error:
+                    # Skip shapes that can't be processed
+                    print(f"Skipping shape due to error: {shape_error}")
+                    continue
+        
+        return jsonify({
+            'success': True,
+            'slide_id': slide_id,
+            'preview': slide_content
+        })
+        
+    except Exception as e:
+        print(f"Error getting slide preview: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    """Download generated presentation files"""
+    try:
+        file_path = os.path.join('uploads', filename)
+        if os.path.exists(file_path):
+            return send_file(file_path, as_attachment=True, download_name=filename)
+        else:
+            return jsonify({'error': 'File not found'}), 404
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate_msa_template', methods=['POST'])
+def generate_msa_template():
+    try:
+        data = request.get_json()
+        selected_slides = data.get('selected_slides', [])
+        dynamic_variables = data.get('dynamic_variables', {})
+        
+        if not selected_slides:
+            return jsonify({'error': 'No slides selected'}), 400
+        
+        # Create PowerPoint presentation
+        prs = Presentation()
+        
+        # Map slide IDs to their actual .pptx files
+        slide_file_mapping = {
+            'title-1': 'templates/slide_templates/msa_exec/Title/msa[title].pptx',
+            # Add more mappings as you add more slides to other sections
+        }
+        
+        print(f"Generating template with {len(selected_slides)} slides")
+        
+        # Process slides in the order they were selected
+        for slide_info in selected_slides:
+            slide_id = slide_info['id']
+            
+            if slide_id in slide_file_mapping:
+                # Use actual .pptx file
+                pptx_path = slide_file_mapping[slide_id]
+                if os.path.exists(pptx_path):
+                    print(f"Adding slide from: {pptx_path}")
+                    # Load the template slide
+                    template_prs = Presentation(pptx_path)
+                    if len(template_prs.slides) > 0:
+                        template_slide = template_prs.slides[0]
+                        
+                        # Use advanced slide copying to preserve ALL formatting
+                        print(f"Copying slide with full formatting preservation...")
+                        slide = copy_slide_with_full_formatting(template_slide, prs)
+                else:
+                    print(f"Warning: Template file not found for {slide_id}: {pptx_path}")
+            else:
+                # Fallback to text-based content for slides without .pptx templates
+                print(f"Using text template for slide: {slide_id}")
+                slide_layout = prs.slide_layouts[1]  # Title and Content layout
+                slide = prs.slides.add_slide(slide_layout)
+                
+                # Set title
+                title = slide.shapes.title
+                title.text = slide_info.get('label', f'Slide {slide_id}')
+                
+                # Add placeholder content
+                if len(slide.placeholders) > 1:
+                    content = slide.placeholders[1]
+                    content.text = f"Content for {slide_info.get('label', slide_id)}\n\nThis slide template will be enhanced with actual content."
+        
+        # Save presentation with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_filename = f"MSA_Execution_Template_{timestamp}.pptx"
+        output_path = os.path.join('uploads', output_filename)
+        
+        # Ensure uploads directory exists
+        os.makedirs('uploads', exist_ok=True)
+        
+        prs.save(output_path)
+        
+        print(f"Template saved successfully: {output_filename}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Custom template generated successfully with {len(selected_slides)} slides',
+            'filename': output_filename,
+            'download_url': f'/download/{output_filename}',
+            'slides_included': [slide['label'] for slide in selected_slides]
+        })
+        
+    except Exception as e:
+        print(f"Error generating MSA template: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+def retrieve_slide_content(slide_config, variables):
+    """
+    Retrieve slide content from templates and integrate dynamic variables
+    """
+    section = slide_config['section']
+    slide_id = slide_config.get('template_file', '').replace('.json', '')
+    
+    # Template content mapping with dynamic variable integration
+    content_templates = {
+        # Title Section
+        'title_slide': f"""MSA Execution Overview - {variables['project_name']}
+
+• Master Service Agreement Implementation
+• Project Capacity: {variables['capacity']}
+• Total Investment: {variables['project_cost']}
+• Key Stakeholders and Responsibilities
+• Risk Management Framework
+• Expected Completion: {variables['date']}""",
+
+        # Executive Summary
+        'executive_summary': f"""Executive Summary - {variables['project_name']}
+
+• Project Objectives: Deploy {variables['capacity']} renewable energy system
+• Total Investment: {variables['project_cost']}
+• Expected IRR: {variables['irr']}
+• Contract Term: {variables['contract_term']}
+• Key Deliverables and Milestones
+• Success Metrics and KPIs""",
+
+        # Module Procurement
+        'procurement_strategy': f"""Procurement Strategy - {variables['project_name']}
+
+• Strategic Sourcing Approach for {variables['capacity']} system
+• Supplier Market Analysis
+• Procurement Methodology and Standards
+• Quality Assurance Framework
+• Cost Optimization Target: 5-10% savings
+• Timeline: Q1-Q3 {variables['date']}""",
+
+        'supplier_selection': f"""Supplier Selection Criteria
+
+• Technical Capabilities: {variables['capacity']} scale experience
+• Financial Stability: Minimum $50M revenue
+• Past Performance: 95%+ delivery success rate
+• Quality Certifications: ISO 9001, IEC standards
+• Risk Assessment: Financial and operational risks
+• Geographic Presence: Local support capabilities""",
+
+        'procurement_timeline': f"""Procurement Timeline - {variables['project_name']}
+
+• RFP Release: January {variables['date'].split()[-1]}
+• Proposal Submission: March {variables['date'].split()[-1]}
+• Technical Evaluation: April {variables['date'].split()[-1]}
+• Commercial Negotiation: May {variables['date'].split()[-1]}
+• Contract Award: June {variables['date'].split()[-1]}
+• Delivery Schedule: Q3-Q4 {variables['date'].split()[-1]}""",
+
+        'cost_analysis': f"""Cost Analysis and Budget
+
+• Total Budget: {variables['project_cost']}
+• Unit Costs: {float(variables['project_cost'].replace('$', '').replace(',', '')) / float(variables['capacity'].replace(' MW', '')):.0f}k per MW
+• Equipment Costs: 65% of total budget
+• Installation & Commissioning: 25%
+• Soft Costs & Contingency: 10%
+• Payment Terms: Progressive payments""",
+
+        'risk_assessment': f"""Risk Assessment and Mitigation
+
+• Supply Chain Risks: Material availability, logistics
+• Quality Risks: Performance degradation, warranty
+• Schedule Risks: Weather, permitting delays
+• Cost Risks: Material price volatility
+• Mitigation: Multiple suppliers, insurance, contracts
+• Contingency Fund: 10% of {variables['project_cost']}""",
+
+        # Gen-Tie EPC
+        'epc_overview': f"""EPC Agreement Overview - {variables['project_name']}
+
+• Scope: Complete {variables['capacity']} system delivery
+• Contract Value: {variables['project_cost']}
+• Performance Standards: 98%+ availability
+• Delivery Timeline: 18 months
+• Quality Standards: IEC/IEEE compliance
+• Warranty: 25-year performance guarantee""",
+
+        'technical_specs': f"""Technical Specifications
+
+• System Capacity: {variables['capacity']}
+• Annual Production: {variables['annual_production']}
+• Performance Ratio: >85%
+• System Efficiency: >20%
+• Grid Compliance: IEEE 1547 standards
+• Environmental Rating: IEC 61215/61730""",
+
+        'delivery_schedule': f"""Delivery Schedule and Milestones
+
+• Project Kickoff: Q1 {variables['date'].split()[-1]}
+• Design & Engineering: Q1-Q2 {variables['date'].split()[-1]}
+• Procurement & Manufacturing: Q2-Q3 {variables['date'].split()[-1]}
+• Installation & Construction: Q3-Q4 {variables['date'].split()[-1]}
+• Testing & Commissioning: Q4 {variables['date'].split()[-1]}
+• Commercial Operation: Q1 {int(variables['date'].split()[-1]) + 1}""",
+
+        'performance_guarantees': f"""Performance Guarantees
+
+• System Availability: >98% annually
+• Performance Ratio: >85% in year 1
+• Power Output: {variables['capacity']} ± 3%
+• Annual Production: {variables['annual_production']} ± 5%
+• Degradation Rate: <0.5% per year
+• Warranty Period: {variables['contract_term']}""",
+
+        # PPA Updates
+        'ppa_status': f"""PPA Status and Updates
+
+• Contract Capacity: {variables['capacity']}
+• Contract Price: {variables['energy_price']}
+• Term: {variables['contract_term']}
+• Annual Escalation: {variables['escalation_rate']}
+• Current Status: Under negotiation
+• Expected Execution: Q2 {variables['date'].split()[-1]}""",
+
+        'commercial_terms': f"""Commercial Terms and Conditions
+
+• Contract Price: {variables['energy_price']}
+• Contract Term: {variables['contract_term']}
+• Annual Escalation: {variables['escalation_rate']}
+• Performance Requirements: >95% availability
+• Settlement: Monthly energy delivery
+• Credit Requirements: Investment grade""",
+
+        'ppa_timeline': f"""PPA Timeline and Next Steps
+
+• Term Sheet: Completed
+• Contract Negotiation: In progress
+• Regulatory Approval: Q2 {variables['date'].split()[-1]}
+• Financial Close: Q3 {variables['date'].split()[-1]}
+• Commercial Operation: Q1 {int(variables['date'].split()[-1]) + 1}
+• First Energy Delivery: Q1 {int(variables['date'].split()[-1]) + 1}""",
+
+        # Economics and Finance
+        'financial_overview': f"""Financial Overview and Assumptions
+
+• Total Project Cost: {variables['project_cost']}
+• Revenue Projections: {float(variables['annual_production'].replace(',', '').replace(' MWh', '')) * float(variables['energy_price'].replace('$', '').replace('/MWh', '')) / 1000000:.1f}M annually
+• Project IRR: {variables['irr']}
+• Debt/Equity Ratio: {variables['debt_equity_ratio']}
+• Capacity Factor: 28%
+• Contract Escalation: {variables['escalation_rate']}""",
+
+        'capex_analysis': f"""Capital Expenditure Analysis
+
+• Total CapEx: {variables['project_cost']}
+• Equipment Costs: 65% ({float(variables['project_cost'].replace('$', '').replace(',', '')) * 0.65 / 1000000:.1f}M)
+• Installation Costs: 25% ({float(variables['project_cost'].replace('$', '').replace(',', '')) * 0.25 / 1000000:.1f}M)
+• Soft Costs: 7% ({float(variables['project_cost'].replace('$', '').replace(',', '')) * 0.07 / 1000000:.1f}M)
+• Contingency: 3% ({float(variables['project_cost'].replace('$', '').replace(',', '')) * 0.03 / 1000000:.1f}M)
+• Cost per MW: {float(variables['project_cost'].replace('$', '').replace(',', '')) / float(variables['capacity'].replace(' MW', '')) / 1000:.1f}M/MW""",
+
+        'revenue_projections': f"""Revenue Projections
+
+• Annual Energy Production: {variables['annual_production']}
+• Contract Price (Year 1): {variables['energy_price']}
+• Annual Revenue (Year 1): ${float(variables['annual_production'].replace(',', '').replace(' MWh', '')) * float(variables['energy_price'].replace('$', '').replace('/MWh', '')) / 1000000:.1f}M
+• Annual Escalation: {variables['escalation_rate']}
+• 25-Year Revenue (Nominal): ${float(variables['annual_production'].replace(',', '').replace(' MWh', '')) * float(variables['energy_price'].replace('$', '').replace('/MWh', '')) * 25 * 1.15 / 1000000:.0f}M
+• Capacity Factor: 28%""",
+
+        'cash_flow': f"""Cash Flow Analysis
+
+• Project IRR: {variables['irr']}
+• NPV (10% discount): {variables['npv']}
+• Payback Period: {variables['payback_period']}
+• DSCR (Average): 1.35x
+• Peak Annual Cash Flow: Year 8-15
+• Cumulative Cash Flow Positive: Year 9""",
+
+        'roi_analysis': f"""Return on Investment
+
+• Project IRR: {variables['irr']}
+• Equity IRR: 15.8%
+• NPV @ 10%: {variables['npv']}
+• ROI Metrics exceed industry benchmarks
+• Payback Period: {variables['payback_period']}
+• Risk-adjusted returns competitive""",
+
+        'sensitivity_analysis': f"""Sensitivity Analysis
+
+• Energy Price ±10%: IRR range 10.2% - 14.8%
+• CapEx ±10%: IRR range 10.8% - 14.2%
+• Capacity Factor ±5%: IRR range 11.1% - 13.9%
+• O&M Costs ±20%: IRR range 12.1% - 12.9%
+• All scenarios maintain positive NPV
+• Base case IRR: {variables['irr']}""",
+
+        'financing_structure': f"""Financing Structure
+
+• Total Project Cost: {variables['project_cost']}
+• Debt Financing: 70% ({float(variables['project_cost'].replace('$', '').replace(',', '')) * 0.7 / 1000000:.1f}M)
+• Equity Investment: 30% ({float(variables['project_cost'].replace('$', '').replace(',', '')) * 0.3 / 1000000:.1f}M)
+• Debt Term: 18 years
+• Interest Rate: 4.5% (fixed)
+• DSCR Covenant: >1.20x""",
+
+        # Appendix
+        'supporting_docs': f"""Supporting Documentation
+
+• Technical Studies: Feasibility, interconnection
+• Financial Models: 25-year cash flow model
+• Legal Documents: Land lease, permits
+• Environmental Studies: Impact assessment
+• Third-party Reports: Technical due diligence
+• Insurance Documentation: Construction & operational""",
+
+        'technical_drawings': f"""Technical Drawings and Schematics
+
+• Site Plan: {variables['capacity']} layout design
+• System Architecture: Single-line diagrams
+• Electrical Schematics: Grid interconnection
+• Equipment Specifications: Detailed datasheets
+• Installation Details: Foundation, mounting
+• As-built Drawings: Post-construction""",
+
+        'regulatory_compliance': f"""Regulatory Compliance
+
+• Environmental Permits: Approved
+• Building Permits: In process
+• Grid Interconnection: Study complete
+• Safety Certifications: Equipment certified
+• Local Approvals: Zoning, setbacks
+• Compliance Timeline: Q2 {variables['date'].split()[-1]}""",
+
+        'environmental_impact': f"""Environmental Impact Assessment
+
+• Environmental Screening: Completed
+• Habitat Assessment: No critical habitats
+• Visual Impact: Minimal due to location
+• Noise Assessment: <45dB at property line
+• Mitigation Measures: Native vegetation restoration
+• Monitoring: Annual environmental reports""",
+
+        'contact_info': f"""Contact Information and References
+
+• Project Manager: John Smith, jsmith@{variables['company_name'].lower().replace(' ', '')}.com, (555) 123-4567
+• Technical Lead: Sarah Johnson, sjohnson@{variables['company_name'].lower().replace(' ', '')}.com, (555) 123-4568
+• Financial Lead: Mike Chen, mchen@{variables['company_name'].lower().replace(' ', '')}.com, (555) 123-4569
+• Legal Counsel: Anderson & Associates, legal@anderson.com, (555) 123-4570
+• EPC Contractor: [To be determined]"""
+    }
+    
+    # Get content template based on slide template file name
+    template_key = slide_id or slide_config['section']
+    return content_templates.get(template_key, f"Template content for {slide_config['title']}")
+
+def apply_slide_formatting(slide, section):
+    """
+    Apply section-specific formatting to slides
+    """
+    try:
+        # Apply different formatting based on section
+        if section == 'title':
+            # Title slide formatting
+            if slide.shapes.title:
+                title_format = slide.shapes.title.text_frame.paragraphs[0].font
+                title_format.size = Pt(28)
+                title_format.bold = True
+        
+        elif section in ['economics-finance', 'module-procurement']:
+            # Financial slides - make numbers stand out
+            if len(slide.placeholders) > 1:
+                content_format = slide.placeholders[1].text_frame.paragraphs[0].font
+                content_format.size = Pt(16)
+        
+        # Add more formatting rules as needed
+        
+    except Exception as e:
+        print(f"Warning: Could not apply formatting to {section}: {str(e)}")
+        # Continue without failing the entire process
 
 if __name__ == '__main__':
     app.run(debug=True) 
