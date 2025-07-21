@@ -1,5 +1,5 @@
 import uuid
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, Response
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -17,6 +17,9 @@ import base64
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.enum.dml import MSO_THEME_COLOR
 import tempfile
+from pptx.dml.color import RGBColor
+from docx import Document
+import re
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -618,6 +621,88 @@ def create_powerpoint_presentation(content, customizations, pptx_file):
     # Save the presentation
     prs.save(pptx_file)
 
+def replace_placeholders_in_docx(doc: Document, mapping: dict):
+    """
+    Replace all placeholders in the DOCX document with their corresponding values from mapping.
+    Handles split runs and preserves formatting.
+    """
+    def replace_in_runs(runs, mapping):
+        # Join all run texts
+        full_text = ''.join(run.text for run in runs)
+        # For each key, replace all occurrences
+        for key, value in mapping.items():
+            if key in full_text:
+                full_text = full_text.replace(key, value)
+        # Now, re-split the text into runs, preserving formatting
+        idx = 0
+        for run in runs:
+            run_len = len(run.text)
+            run.text = full_text[idx:idx+run_len]
+            idx += run_len
+
+    def process_paragraph(paragraph, mapping):
+        # If the key is split across runs, we need to join, replace, and re-split
+        if not paragraph.runs:
+            return
+        # Only process if any key is present in the joined text
+        joined = ''.join(run.text for run in paragraph.runs)
+        if any(key in joined for key in mapping):
+            replace_in_runs(paragraph.runs, mapping)
+
+    def process_table(table, mapping):
+        for row in table.rows:
+            for cell in row.cells:
+                process_block(cell, mapping)
+
+    def process_block(block, mapping):
+        for paragraph in block.paragraphs:
+            process_paragraph(paragraph, mapping)
+        for table in getattr(block, 'tables', []):
+            process_table(table, mapping)
+
+    # Main document
+    for paragraph in doc.paragraphs:
+        process_paragraph(paragraph, mapping)
+    for table in doc.tables:
+        process_table(table, mapping)
+    # Headers and footers
+    for section in doc.sections:
+        header = section.header
+        footer = section.footer
+        process_block(header, mapping)
+        process_block(footer, mapping)
+    return doc
+
+@app.route('/lease_population_replace', methods=['POST'])
+def lease_population_replace():
+    """
+    Endpoint to process DOCX file and replace placeholders with user-provided values.
+    Streams the modified DOCX back to the user.
+    """
+    if 'docx' not in request.files or 'mapping' not in request.form:
+        return jsonify({'error': 'Missing file or mapping'}), 400
+    docx_file = request.files['docx']
+    mapping_json = request.form['mapping']
+    try:
+        mapping = {item['key']: item['value'] for item in json.loads(mapping_json)}
+    except Exception as e:
+        return jsonify({'error': 'Invalid mapping format'}), 400
+    # Validate keys
+    if not mapping or any(not k for k in mapping) or len(set(mapping)) != len(mapping):
+        return jsonify({'error': 'Invalid or duplicate keys'}), 400
+    # Process DOCX
+    try:
+        doc = Document(docx_file)
+        doc = replace_placeholders_in_docx(doc, mapping)
+        # Stream back as download
+        from io import BytesIO
+        out_stream = BytesIO()
+        doc.save(out_stream)
+        out_stream.seek(0)
+        return send_file(out_stream, as_attachment=True, download_name='lease_population_filled.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    except Exception as e:
+        return jsonify({'error': f'Failed to process DOCX: {str(e)}'}), 500
+
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
@@ -705,17 +790,40 @@ def get_slide_preview(slide_id):
         
         slide = prs.slides[0]  # Get the first slide
         
-        # Extract slide content for preview
+        # Extract slide content and formatting for preview
         slide_content = {
             'title': '',
             'content': [],
-            'layout': slide.slide_layout.name if hasattr(slide.slide_layout, 'name') else 'Unknown'
+            'layout': slide.slide_layout.name if hasattr(slide.slide_layout, 'name') else 'Unknown',
+            'background': {},
+            'shapes': []
         }
-        
-        # Extract title and content more robustly
+
+        # Extract background color (solid only for now)
+        try:
+            bg = slide.background
+            if hasattr(bg, 'fill') and bg.fill.type == 1:  # MSO_FILL_TYPE.SOLID
+                if hasattr(bg.fill, 'fore_color') and hasattr(bg.fill.fore_color, 'rgb') and bg.fill.fore_color.rgb:
+                    slide_content['background']['type'] = 'solid'
+                    slide_content['background']['color'] = str(bg.fill.fore_color.rgb)
+        except Exception as bg_error:
+            print(f"Background extraction skipped: {bg_error}")
+
+        # Extract all shapes with formatting
         if hasattr(slide, 'shapes'):
             for shape in slide.shapes:
                 try:
+                    shape_info = {
+                        'type': str(shape.shape_type),
+                        'left': int(shape.left),
+                        'top': int(shape.top),
+                        'width': int(shape.width),
+                        'height': int(shape.height),
+                        'is_title': False,
+                        'text': '',
+                        'font': {},
+                        'alignment': None
+                    }
                     if hasattr(shape, 'text') and shape.text.strip():
                         # Check if it's a title placeholder
                         is_title = False
@@ -723,20 +831,33 @@ def get_slide_preview(slide_id):
                             if hasattr(shape, 'placeholder_format'):
                                 is_title = shape.placeholder_format.type == 1  # Title placeholder
                         except:
-                            # If placeholder check fails, use position/size heuristics
-                            # Title shapes are typically at the top and larger
                             if shape.top < Inches(2) and shape.width > Inches(6):
                                 is_title = True
-                        
+                        shape_info['is_title'] = is_title
+                        shape_info['text'] = shape.text
+                        # Extract font and alignment from first paragraph/run
+                        if hasattr(shape, 'text_frame') and shape.text_frame.paragraphs:
+                            para = shape.text_frame.paragraphs[0]
+                            if para.runs and len(para.runs) > 0:
+                                run = para.runs[0]
+                                font = run.font
+                                shape_info['font'] = {
+                                    'name': font.name,
+                                    'size': int(font.size.pt) if font.size else None,
+                                    'bold': font.bold,
+                                    'italic': font.italic,
+                                    'color': str(font.color.rgb) if font.color and font.color.rgb else None
+                                }
+                            shape_info['alignment'] = str(para.alignment) if para.alignment else None
                         if is_title:
                             slide_content['title'] = shape.text
                         else:
                             slide_content['content'].append(shape.text)
+                    slide_content['shapes'].append(shape_info)
                 except Exception as shape_error:
-                    # Skip shapes that can't be processed
                     print(f"Skipping shape due to error: {shape_error}")
                     continue
-        
+
         return jsonify({
             'success': True,
             'slide_id': slide_id,
@@ -775,45 +896,135 @@ def generate_msa_template():
         
         # Map slide IDs to their actual .pptx files
         slide_file_mapping = {
-            'title-1': 'templates/slide_templates/msa_exec/Title/msa[title].pptx',
+            'title-1': ('templates/slide_templates/msa_exec/Title/msa[title].pptx', 0),
+            'exec-summary-1': ('templates/slide_templates/msa_exec/Executive_Summary/ExecSummary.pptx', 0),
+            'module-procurement-strategy': ('templates/slide_templates/msa_exec/Module_procurement/mp.pptx', 0),
+            'module-procurement-supplier': ('templates/slide_templates/msa_exec/Module_procurement/mp.pptx', 1),
+            'module-procurement-timeline': ('templates/slide_templates/msa_exec/Module_procurement/mp.pptx', 2),
+            'module-procurement-cost': ('templates/slide_templates/msa_exec/Module_procurement/mp.pptx', 3),
             # Add more mappings as you add more slides to other sections
         }
         
         print(f"Generating template with {len(selected_slides)} slides")
         
         # Process slides in the order they were selected
-        for slide_info in selected_slides:
+        for idx, slide_info in enumerate(selected_slides):
             slide_id = slide_info['id']
+            edited_shapes = slide_info.get('edited_shapes', None)
+            page_number = idx + 1
             
             if slide_id in slide_file_mapping:
                 # Use actual .pptx file
-                pptx_path = slide_file_mapping[slide_id]
+                pptx_path, slide_idx = slide_file_mapping[slide_id]
                 if os.path.exists(pptx_path):
                     print(f"Adding slide from: {pptx_path}")
                     # Load the template slide
                     template_prs = Presentation(pptx_path)
                     if len(template_prs.slides) > 0:
-                        template_slide = template_prs.slides[0]
-                        
+                        template_slide = template_prs.slides[slide_idx]
                         # Use advanced slide copying to preserve ALL formatting
                         print(f"Copying slide with full formatting preservation...")
                         slide = copy_slide_with_full_formatting(template_slide, prs)
-                else:
-                    print(f"Warning: Template file not found for {slide_id}: {pptx_path}")
+                        # --- DYNAMIC CONTENT INSERTION ---
+                        if edited_shapes:
+                            shape_idx = 0
+                            for shape in list(slide.shapes):
+                                if not hasattr(shape, 'text_frame'):
+                                    continue
+                                # First text box (text one)
+                                if shape_idx == 0:
+                                    shape.text = edited_shapes[0] if len(edited_shapes) > 0 and edited_shapes[0] else 'August 2024'
+                                    shape.left = Inches(0.7)
+                                    shape.top = Inches(2.5)
+                                    shape.width = shape.width  # keep original width
+                                    shape.height = shape.height  # keep original height
+                                    # Style: white, bold
+                                    for para in shape.text_frame.paragraphs:
+                                        para.font.bold = True
+                                        para.font.color.rgb = RGBColor(255, 255, 255)
+                                # Second text box (page number)
+                                elif shape_idx == 1:
+                                    # Use edited value, else '1' as placeholder
+                                    shape.text = edited_shapes[1] if len(edited_shapes) > 1 and edited_shapes[1] else '1'
+                                    for para in shape.text_frame.paragraphs:
+                                        para.font.bold = True
+                                        para.font.size = Pt(18)
+                                        para.font.color.rgb = RGBColor(255, 255, 255)
+                                        para.alignment = PP_ALIGN.RIGHT
+                                    shape.left = Inches(12)
+                                    shape.top = Inches(7)
+                                    shape.width = Inches(0.7)
+                                    shape.height = Inches(0.3)
+                                # Remove any third or later text boxes
+                                elif shape_idx >= 2:
+                                    slide.shapes._spTree.remove(shape._element)
+                                shape_idx += 1
+                                # Remove outline from all text boxes
+                                if hasattr(shape, 'line') and hasattr(shape.line, 'fill'):
+                                    shape.line.fill.background()
+                        # Remove any extra text boxes if more than 2 remain
+                        text_shapes = [s for s in slide.shapes if hasattr(s, 'text_frame')]
+                        while len(text_shapes) > 2:
+                            slide.shapes._spTree.remove(text_shapes[-1]._element)
+                            text_shapes = [s for s in slide.shapes if hasattr(s, 'text_frame')]
+                        # Remove outline from all text boxes (again, for added boxes)
+                        for shape in text_shapes:
+                            if hasattr(shape, 'line') and hasattr(shape.line, 'fill'):
+                                shape.line.fill.background()
+                        # Ensure both text boxes exist, add if missing
+                        if len(text_shapes) < 2:
+                            if len(text_shapes) == 0:
+                                # Add text one
+                                text_one = slide.shapes.add_textbox(Inches(0.7), Inches(2.5), Inches(4), Inches(1))
+                                text_one.text_frame.text = edited_shapes[0] if edited_shapes and len(edited_shapes) > 0 else 'August 2024'
+                                for para in text_one.text_frame.paragraphs:
+                                    para.font.bold = True
+                                    para.font.color.rgb = RGBColor(255, 255, 255)
+                            # Add page number
+                            page_num_box = slide.shapes.add_textbox(Inches(12), Inches(7), Inches(0.7), Inches(0.3))
+                            page_num_frame = page_num_box.text_frame
+                            page_num_frame.text = edited_shapes[1] if edited_shapes and len(edited_shapes) > 1 and edited_shapes[1] else '1'
+                            for para in page_num_frame.paragraphs:
+                                para.font.size = Pt(18)
+                                para.font.bold = True
+                                para.font.color.rgb = RGBColor(255, 255, 255)
+                                para.alignment = PP_ALIGN.RIGHT
             else:
                 # Fallback to text-based content for slides without .pptx templates
                 print(f"Using text template for slide: {slide_id}")
                 slide_layout = prs.slide_layouts[1]  # Title and Content layout
                 slide = prs.slides.add_slide(slide_layout)
-                
                 # Set title
                 title = slide.shapes.title
-                title.text = slide_info.get('label', f'Slide {slide_id}')
-                
+                if edited_shapes and 'title' in edited_shapes:
+                    title.text = edited_shapes['title']
+                else:
+                    title.text = slide_info.get('label', f'Slide {slide_id}')
+                # Style title: white, bold
+                for para in title.text_frame.paragraphs:
+                    para.font.bold = True
+                    para.font.size = Pt(32)
+                    para.font.color.rgb = RGBColor(255, 255, 255)
                 # Add placeholder content
                 if len(slide.placeholders) > 1:
                     content = slide.placeholders[1]
-                    content.text = f"Content for {slide_info.get('label', slide_id)}\n\nThis slide template will be enhanced with actual content."
+                    if edited_shapes and 'content' in edited_shapes and len(edited_shapes['content']) > 0:
+                        content.text = '\n'.join(edited_shapes['content'])
+                    else:
+                        content.text = f"Content for {slide_info.get('label', slide_id)}\n\nThis slide template will be enhanced with actual content."
+                # --- PAGE NUMBER ---
+                left = Inches(8.5)
+                top = Inches(6.7)
+                width = Inches(1.3)
+                height = Inches(0.5)
+                page_num_box = slide.shapes.add_textbox(left, top, width, height)
+                page_num_frame = page_num_box.text_frame
+                page_num_frame.text = str(page_number)
+                for para in page_num_frame.paragraphs:
+                    para.font.size = Pt(18)
+                    para.font.bold = True
+                    para.font.color.rgb = RGBColor(255, 255, 255)
+                    para.alignment = PP_ALIGN.RIGHT
         
         # Save presentation with timestamp
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

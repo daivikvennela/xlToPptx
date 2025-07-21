@@ -669,6 +669,7 @@
             <ul class="nav-links">
                 <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li>
                 <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li>
+                <li><a href="#" class="nav-link" data-tab="lease-population">Lease Population</a></li>
             </ul>
         </div>
     </nav>
@@ -803,8 +804,8 @@
                         </div>
                         <div class="section-content">
                             <div class="slide-checkbox">
-                                <input type="checkbox" id="exec-1" checked>
-                                <label for="exec-1">Executive Summary - Key Points and Objectives</label>
+                                <input type="checkbox" id="exec-summary-1" checked>
+                                <label for="exec-summary-1">Executive Summary - Key Points and Objectives</label>
                             </div>
                         </div>
                     </div>
@@ -979,10 +980,41 @@
                                 <div class="editor-actions">
                                     <button class="editor-btn save-btn" id="saveEdits">Save Changes</button>
                                     <button class="editor-btn reset-btn" id="resetEdits">Reset</button>
+                                    <button class="editor-btn preview-btn" id="previewSlideBtn" type="button">Preview Slide</button>
                                 </div>
                             </div>
                         </div>
+                        <div class="slide-html-preview" id="slideHtmlPreview" style="display:none; margin-top: 1.5rem;"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+        <div class="tab-content" id="lease-population-tab">
+            <div class="main-content">
+                <h1>Lease Population: DOCX Placeholder Replacement</h1>
+                <form id="kvForm" class="upload-form" autocomplete="off">
+                    <div id="kvPairsContainer">
+                        <!-- Dynamic key-value pairs will be inserted here -->
+                    </div>
+                    <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
+                    <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
+                    <button type="button" class="secondary-btn" id="exportJsonBtn" style="margin-top:1rem;">Export Mapping as JSON</button>
+                </form>
+                <div id="kvValidationMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
+                <div id="kvSummarySection" style="display:none; margin-top:2rem;">
+                    <h2 style="color:#00bfff; margin-bottom:1rem;">Replacement Summary</h2>
+                    <table class="preview-table" id="kvSummaryTable">
+                        <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <div style="margin-top:2rem;">
+                        <label for="docxFileInput" style="color:#00bfff; font-weight:500;">Upload DOCX file:</label>
+                        <input type="file" id="docxFileInput" accept=".docx" style="margin:1rem 0;">
+                        <span id="docxFileName" style="color:#cbd5e0; margin-left:1rem;"></span>
+                        <button type="button" class="submit-btn" id="replaceDocxBtn">Replace Placeholders & Download</button>
+                    </div>
+                    <div id="docxValidationMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
+                    <div id="docxSuccessMsg" style="color:#00bfff; margin:1rem 0; display:none;"></div>
                 </div>
             </div>
         </div>
@@ -1306,10 +1338,19 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 // Collect selected slides
                 const selectedSlides = [];
                 document.querySelectorAll('#msaConfigPanel input[type="checkbox"]:checked').forEach(checkbox => {
+                    const slideId = checkbox.id;
+                    const label = checkbox.nextElementSibling.textContent;
+                    const section = checkbox.closest('.section-group').getAttribute('data-section');
+                    // Collect edited content if available
+                    let edited_shapes = undefined;
+                    if (slideContentStore[slideId] && slideContentStore[slideId].shapes) {
+                        edited_shapes = slideContentStore[slideId].shapes.map(shape => shape.editedText);
+                    }
                     selectedSlides.push({
-                        id: checkbox.id,
-                        label: checkbox.nextElementSibling.textContent,
-                        section: checkbox.closest('.section-group').getAttribute('data-section')
+                        id: slideId,
+                        label: label,
+                        section: section,
+                        edited_shapes: edited_shapes
                     });
                 });
 
@@ -1421,9 +1462,12 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 if (data.success && currentPreviewSlide === slideId) {
                     // Store original content for editing
                     slideContentStore[slideId] = {
-                        title: data.preview.title || '',
-                        content: data.preview.content || [],
-                        layout: data.preview.layout || 'Standard'
+                        shapes: (data.preview.shapes || []).map(shape => ({
+                            ...shape,
+                            editedText: shape.text
+                        })),
+                        layout: data.preview.layout || 'Standard',
+                        background: data.preview.background || {}
                     };
                     
                     // Display the slide preview with edit capabilities
@@ -1456,7 +1500,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                         </div>
                     `;
                     
-                    // Show content editor
+                    // Show content editor for all valid slides
                     contentEditor.style.display = 'block';
                     setupContentEditor(slideId);
                     
@@ -1490,25 +1534,16 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         function setupContentEditor(slideId) {
             const editorFields = document.getElementById('editorFields');
             const slideData = slideContentStore[slideId];
-            
             if (!slideData) return;
-            
-            let fieldsHtml = `
-                <div class="editor-field">
-                    <label for="edit-title">Title</label>
-                    <input type="text" id="edit-title" value="${escapeHtml(slideData.title)}" placeholder="Slide title">
-                </div>
-            `;
-            
-            slideData.content.forEach((text, index) => {
+            let fieldsHtml = '';
+            (slideData.shapes || []).forEach((shape, idx) => {
                 fieldsHtml += `
                     <div class="editor-field">
-                        <label for="edit-content-${index}">Content ${index + 1}</label>
-                        <textarea id="edit-content-${index}" placeholder="Content text">${escapeHtml(text)}</textarea>
+                        <label for="edit-shape-${idx}">${shape.is_title ? 'Title' : `Textbox ${idx+1}`}</label>
+                        <textarea id="edit-shape-${idx}" placeholder="Textbox text" style="width:100%;height:3em;">${escapeHtml(shape.editedText || shape.text || '')}</textarea>
                     </div>
                 `;
             });
-            
             editorFields.innerHTML = fieldsHtml;
         }
         
@@ -1535,12 +1570,10 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             const slideData = slideContentStore[currentPreviewSlide];
             if (!slideData) return;
             
-            // Update stored content
-            slideData.title = document.getElementById('edit-title').value;
-            
-            slideData.content = slideData.content.map((_, index) => {
-                const input = document.getElementById(`edit-content-${index}`);
-                return input ? input.value : _;
+            // Update stored content for all shapes
+            (slideData.shapes || []).forEach((shape, idx) => {
+                const input = document.getElementById(`edit-shape-${idx}`);
+                if (input) shape.editedText = input.value;
             });
             
             // Update preview display
@@ -1561,28 +1594,41 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         function updatePreviewDisplay(slideId) {
             const slideData = slideContentStore[slideId];
             if (!slideData) return;
-            
-            // Update title
-            const titleElement = document.querySelector('.slide-preview-title');
-            if (titleElement) {
-                titleElement.innerHTML = `
-                    ${escapeHtml(slideData.title)}
+            const previewContainer = document.getElementById('slidePreviewContainer');
+            if (!previewContainer) return;
+            // Enhanced preview for Executive Summary
+            if (slideId === 'exec-summary-1') {
+                // Assume: [0]=title, [1]=subtitle, [2]=header, [3-5]=row1, [6-8]=row2, [9-11]=row3, [12]=footer
+                const s = slideData.shapes || [];
+                let html = `<div style="background: #fff; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); padding: 2.5rem 2rem 1.5rem 2rem; min-height: 350px; width: 1100px; max-width: 100%; margin: 0 auto; color: #222;">`;
+                // Title
+                html += `<div style="font-size: 2.2em; font-weight: bold; color: #1e293b; margin-bottom: 0.5rem;">${escapeHtml(s[0]?.editedText || s[0]?.text || '')}</div>`;
+                // Subtitle
+                html += `<div style="font-size: 1.1em; color: #334155; margin-bottom: 1.2rem;">${escapeHtml(s[1]?.editedText || s[1]?.text || '')}</div>`;
+                // Table header
+                html += `<div style="background: #0ea5e9; color: #fff; font-weight: bold; padding: 0.7em 1em; border-radius: 8px 8px 0 0; font-size: 1.1em;">${escapeHtml(s[2]?.editedText || s[2]?.text || '')}</div>`;
+                // Table
+                html += `<table style="width:100%; border-collapse:collapse; font-size:1em; background:#f8fafc;">`;
+                html += `<tr style="background:#e0e7ef; font-weight:bold; color:#222;"><td style='padding:0.7em 1em;'>${escapeHtml(s[3]?.editedText || s[3]?.text || '')}</td><td style='padding:0.7em 1em;'>${escapeHtml(s[4]?.editedText || s[4]?.text || '')}</td><td style='padding:0.7em 1em;'>${escapeHtml(s[5]?.editedText || s[5]?.text || '')}</td></tr>`;
+                html += `<tr><td style='padding:0.7em 1em;'>${escapeHtml(s[6]?.editedText || s[6]?.text || '')}</td><td style='padding:0.7em 1em;'>${escapeHtml(s[7]?.editedText || s[7]?.text || '')}</td><td style='padding:0.7em 1em;'>${escapeHtml(s[8]?.editedText || s[8]?.text || '')}</td></tr>`;
+                html += `<tr><td style='padding:0.7em 1em;'>${escapeHtml(s[9]?.editedText || s[9]?.text || '')}</td><td style='padding:0.7em 1em;'>${escapeHtml(s[10]?.editedText || s[10]?.text || '')}</td><td style='padding:0.7em 1em;'>${escapeHtml(s[11]?.editedText || s[11]?.text || '')}</td></tr>`;
+                html += `</table>`;
+                // Footer/Note
+                html += `<div style="font-size:0.95em; color:#64748b; margin-top:1.2em;">${escapeHtml(s[12]?.editedText || s[12]?.text || '')}</div>`;
+                html += `</div>`;
+                previewContainer.innerHTML = html;
+                return;
+            }
+            // ... existing code ...
+            let previewHtml = '<div class="slide-preview active">';
+            (slideData.shapes || []).forEach((shape, idx) => {
+                previewHtml += `<div class="slide-content-editable" data-shape-index="${idx}" style="margin-bottom:1em;">
+                    <p>${escapeHtml(shape.editedText || shape.text || '')}</p>
                     <span class="edit-indicator" title="Click to edit">✎</span>
-                `;
-            }
-            
-            // Update content
-            const contentContainer = document.querySelector('.slide-preview-content');
-            if (contentContainer && slideData.content.length > 0) {
-                contentContainer.innerHTML = slideData.content.map((text, index) => 
-                    `<div class="slide-content-editable" data-content-index="${index}">
-                        <p>${escapeHtml(text)}</p>
-                        <span class="edit-indicator" title="Click to edit">✎</span>
-                    </div>`
-                ).join('');
-            }
-            
-            // Re-add event handlers
+                </div>`;
+            });
+            previewHtml += '</div>';
+            previewContainer.innerHTML = previewHtml;
             addEditHandlers(slideId);
         }
         
@@ -1633,6 +1679,187 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 showSlidePreview(firstCheckedSlide.id);
             }
         });
+
+        // Slide HTML Preview Feature
+        document.getElementById('previewSlideBtn').addEventListener('click', function() {
+            if (!currentPreviewSlide) return;
+            const slideData = slideContentStore[currentPreviewSlide];
+            if (!slideData) return;
+            // Compose HTML preview
+            let html = `<div style="background: #222; border-radius: 16px; box-shadow: 0 8px 25px rgba(0,0,0,0.2); padding: 2.5rem 2rem 1.5rem 2rem; min-height: 350px; position: relative; color: white; width: 900px; max-width: 100%; margin: 0 auto;">
+                <div style="font-size: 2.2em; font-weight: bold; color: #fff; margin-bottom: 1.2rem; text-shadow: 0 2px 12px #000;">${escapeHtml(slideData.title)}</div>
+                <div style="font-size: 1.15em; color: #e0e0e0; margin-bottom: 2.5rem; white-space: pre-line;">${slideData.content.map(escapeHtml).join('<br>')}</div>
+                <div style="position: absolute; bottom: 1.2rem; right: 2.2rem; font-size: 1.3em; font-weight: bold; color: #fff; background: rgba(0,0,0,0.3); padding: 0.3em 1.2em; border-radius: 8px; box-shadow: 0 2px 8px #000;">Page <span id='slidePreviewPageNum'></span></div>
+            </div>`;
+            const previewDiv = document.getElementById('slideHtmlPreview');
+            previewDiv.innerHTML = html;
+            previewDiv.style.display = 'block';
+            // Set page number (find index in selected slides)
+            const selectedSlides = Array.from(document.querySelectorAll('#msaConfigPanel input[type="checkbox"]:checked'));
+            let pageNum = selectedSlides.findIndex(cb => cb.id === currentPreviewSlide) + 1;
+            if (pageNum < 1) pageNum = 1;
+            document.getElementById('slidePreviewPageNum').textContent = pageNum;
+        });
+
+        // Lease Population Tab Logic
+        function activateLeasePopulationTab() {
+            // Tab switching
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+
+            // Dynamic key-value form logic
+            const kvPairsContainer = document.getElementById('kvPairsContainer');
+            const addPairBtn = document.getElementById('addPairBtn');
+            const kvForm = document.getElementById('kvForm');
+            const kvValidationMsg = document.getElementById('kvValidationMsg');
+            const kvSummarySection = document.getElementById('kvSummarySection');
+            const kvSummaryTable = document.getElementById('kvSummaryTable').querySelector('tbody');
+            const exportJsonBtn = document.getElementById('exportJsonBtn');
+            let pairCount = 0;
+
+            function addPair(key = '', value = '') {
+                const pairId = 'pair-' + (++pairCount);
+                const div = document.createElement('div');
+                div.className = 'kv-pair-row';
+                div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                div.innerHTML = `
+                    <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                    <input type="text" class="kv-value" placeholder="Replacement value" value="${value}" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                    <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+                `;
+                kvPairsContainer.appendChild(div);
+                div.querySelector('.remove-pair-btn').onclick = function() {
+                    div.remove();
+                };
+            }
+            // Add initial pair
+            addPair();
+            addPairBtn.onclick = function() { addPair(); };
+
+            kvForm.onsubmit = function(e) {
+                e.preventDefault();
+                kvValidationMsg.style.display = 'none';
+                kvSummarySection.style.display = 'none';
+                // Gather pairs
+                const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+                const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+                // Validation
+                let error = '';
+                if (keys.some(k => !k)) error = 'All placeholders must be non-empty.';
+                else if (new Set(keys).size !== keys.length) error = 'Placeholders must be unique.';
+                if (error) {
+                    kvValidationMsg.textContent = error;
+                    kvValidationMsg.style.display = 'block';
+                    return;
+                }
+                // Show summary
+                kvSummaryTable.innerHTML = '';
+                keys.forEach((k, i) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>${k}</td><td>${values[i]}</td>`;
+                    kvSummaryTable.appendChild(row);
+                });
+                kvSummarySection.style.display = 'block';
+                // Store for later
+                kvForm.kvMapping = keys.map((k, i) => ({key: k, value: values[i]}));
+            };
+
+            exportJsonBtn.onclick = function() {
+                const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+                const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+                let error = '';
+                if (keys.some(k => !k)) error = 'All placeholders must be non-empty.';
+                else if (new Set(keys).size !== keys.length) error = 'Placeholders must be unique.';
+                if (error) {
+                    kvValidationMsg.textContent = error;
+                    kvValidationMsg.style.display = 'block';
+                    return;
+                }
+                const mapping = keys.map((k, i) => ({key: k, value: values[i]}));
+                const blob = new Blob([JSON.stringify(mapping, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'lease_population_mapping.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
+            // DOCX upload and replacement
+            const docxInput = document.getElementById('docxFileInput');
+            const docxFileName = document.getElementById('docxFileName');
+            const docxValidationMsg = document.getElementById('docxValidationMsg');
+            const docxSuccessMsg = document.getElementById('docxSuccessMsg');
+            if (docxInput) {
+                docxInput.onchange = function() {
+                    if (docxInput.files && docxInput.files[0]) {
+                        docxFileName.textContent = docxInput.files[0].name;
+                    } else {
+                        docxFileName.textContent = '';
+                    }
+                };
+            }
+            document.getElementById('replaceDocxBtn').onclick = async function() {
+                docxValidationMsg.style.display = 'none';
+                docxSuccessMsg.style.display = 'none';
+                if (!docxInput.files || !docxInput.files[0]) {
+                    docxValidationMsg.textContent = 'Please select a DOCX file.';
+                    docxValidationMsg.style.display = 'block';
+                    return;
+                }
+                const mapping = kvForm.kvMapping;
+                if (!mapping || mapping.length === 0) {
+                    docxValidationMsg.textContent = 'No key-value mapping found.';
+                    docxValidationMsg.style.display = 'block';
+                    return;
+                }
+                // Prepare form data
+                const formData = new FormData();
+                formData.append('docx', docxInput.files[0]);
+                formData.append('mapping', JSON.stringify(mapping));
+                // Show loading
+                this.disabled = true;
+                this.textContent = 'Processing...';
+                try {
+                    const response = await fetch('/lease_population_replace', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    if (!response.ok) throw new Error('Failed to process DOCX');
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    // Show download link and success message
+                    docxSuccessMsg.innerHTML = `<a href="${url}" download="lease_population_filled.docx" style="color:#00bfff; text-decoration:underline;">Download replaced DOCX file</a> <span style='color:#22c55e;'>&#10003; Success!</span>`;
+                    docxSuccessMsg.style.display = 'block';
+                    // Optionally, auto-download as well
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'lease_population_filled.docx';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                } catch (err) {
+                    docxValidationMsg.textContent = 'Error: ' + err.message;
+                    docxValidationMsg.style.display = 'block';
+                } finally {
+                    this.disabled = false;
+                    this.textContent = 'Replace Placeholders & Download';
+                }
+            };
+        }
+        // Activate Lease Population tab logic on DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', activateLeasePopulationTab);
     </script>
 </body>
 </html> 
