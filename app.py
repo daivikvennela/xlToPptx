@@ -20,6 +20,8 @@ import tempfile
 from pptx.dml.color import RGBColor
 from docx import Document
 import re
+import csv
+from docx.shared import RGBColor
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -621,19 +623,26 @@ def create_powerpoint_presentation(content, customizations, pptx_file):
     # Save the presentation
     prs.save(pptx_file)
 
+def normalize_placeholder_key(key):
+    """Return the key with and without brackets for matching."""
+    k = key.strip()
+    if k.startswith('[') and k.endswith(']'):
+        return [k, k[1:-1].strip()]
+    return [k, f'[{k}]']
+
 def replace_placeholders_in_docx(doc: Document, mapping: dict):
     """
     Replace all placeholders in the DOCX document with their corresponding values from mapping.
     Handles split runs and preserves formatting.
+    Excludes brackets from the replaced value.
     """
     def replace_in_runs(runs, mapping):
-        # Join all run texts
         full_text = ''.join(run.text for run in runs)
-        # For each key, replace all occurrences
         for key, value in mapping.items():
-            if key in full_text:
-                full_text = full_text.replace(key, value)
-        # Now, re-split the text into runs, preserving formatting
+            for variant in normalize_placeholder_key(key):
+                if variant in full_text:
+                    # Replace with value, excluding brackets
+                    full_text = full_text.replace(variant, value)
         idx = 0
         for run in runs:
             run_len = len(run.text)
@@ -646,7 +655,7 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
             return
         # Only process if any key is present in the joined text
         joined = ''.join(run.text for run in paragraph.runs)
-        if any(key in joined for key in mapping):
+        if any(variant in joined for key in mapping for variant in normalize_placeholder_key(key)):
             replace_in_runs(paragraph.runs, mapping)
 
     def process_table(table, mapping):
@@ -673,33 +682,210 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
         process_block(footer, mapping)
     return doc
 
+def replace_placeholders_in_docx_with_track_changes(doc: Document, mapping: dict):
+    """
+    Instead of direct replacement, highlight the placeholder and append the new value as a suggestion.
+    Excludes brackets from the replaced value.
+    """
+    def process_paragraph(paragraph, mapping):
+        for run in paragraph.runs:
+            for key, value in mapping.items():
+                for variant in normalize_placeholder_key(key):
+                    if variant in run.text:
+                        # Instead of replacing, highlight and append suggestion (exclude brackets)
+                        run.text = run.text.replace(variant, variant)
+                        add_comment_to_run(run, value)
+
+    def process_table(table, mapping):
+        for row in table.rows:
+            for cell in row.cells:
+                for paragraph in cell.paragraphs:
+                    process_paragraph(paragraph, mapping)
+
+    # Main document
+    for paragraph in doc.paragraphs:
+        process_paragraph(paragraph, mapping)
+    for table in doc.tables:
+        process_table(table, mapping)
+    # Headers and footers
+    for section in doc.sections:
+        for paragraph in section.header.paragraphs:
+            process_paragraph(paragraph, mapping)
+        for paragraph in section.footer.paragraphs:
+            process_paragraph(paragraph, mapping)
+    return doc
+
+def parse_kv_table_file(file_storage):
+    """
+    Parse a 2-column CSV or Excel file into a list of {'key': ..., 'value': ...} dicts.
+    The first row is treated as the document name (not a key-value pair).
+    """
+    filename = file_storage.filename.lower()
+    mapping = []
+    document_name = None
+    if filename.endswith('.csv'):
+        file_storage.stream.seek(0)
+        reader = csv.reader((line.decode('utf-8') for line in file_storage.stream), delimiter=',')
+        rows = list(reader)
+        if rows:
+            document_name = rows[0][0].strip() if rows[0] and rows[0][0] else 'lease_population_filled'
+            for row in rows[1:]:
+                if len(row) >= 2:
+                    mapping.append({'key': row[0].strip(), 'value': row[1].strip()})
+    elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+        df = pd.read_excel(file_storage, header=None)
+        if not df.empty:
+            document_name = str(df.iloc[0,0]).strip() if not pd.isnull(df.iloc[0,0]) else 'lease_population_filled'
+            for _, row in df.iloc[1:].iterrows():
+                if len(row) >= 2:
+                    mapping.append({'key': str(row[0]).strip(), 'value': str(row[1]).strip()})
+    else:
+        raise ValueError('Unsupported file type')
+    # Remove header row if it looks like a header (after document name row)
+    if mapping and mapping[0]['key'].lower() in ('key', 'placeholder') and mapping[0]['value'].lower() in ('value', 'replacement'):
+        mapping = mapping[1:]
+    return mapping, document_name
+
+@app.route('/parse_kv_table', methods=['POST'])
+def parse_kv_table():
+    """
+    Accept a 2-column CSV or Excel file and return a key-value mapping as JSON.
+    The first row is treated as the document name.
+    """
+    if 'table_file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    file = request.files['table_file']
+    try:
+        mapping, document_name = parse_kv_table_file(file)
+        # Validate
+        keys = [pair['key'] for pair in mapping]
+        if any(not k for k in keys) or len(set(keys)) != len(keys):
+            return jsonify({'error': 'Keys must be non-empty and unique'}), 400
+        return jsonify({'mapping': mapping, 'document_name': document_name})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+# --- Track Changes Replacement Logic ---
+def add_comment_to_run(run, comment_text):
+    """
+    Add a comment to a run. python-docx does not support comments natively as of 2024.
+    This is a limitation. As a workaround, we can highlight the run and append the new value in brackets.
+    """
+    # Highlight the run (yellow)
+    run.font.highlight_color = 7  # 7 = yellow in MS Word
+    # Append the suggestion as [NEW: value]
+    run.text += f" [NEW: {comment_text}]"
+    # Note: True Word comments/revisions are not supported by python-docx as of 2024.
+    # If/when support is added, this is where to insert a real comment.
+
+
+def remove_acknowledgment_block(doc, keep_type):
+    """
+    Remove the acknowledgment block for the non-selected party type.
+    - keep_type: 'Entity or Trust' or 'Individual'
+    - The block to remove starts at its header and includes all following paragraphs up to the next block's header or end of document.
+    - If both or neither block is found, insert a placeholder or error message.
+    """
+    # Define headers
+    header_entity = 'Acknowledgment Block for Entity or Trust'
+    header_individual = 'Acknowledgment Block for Individual'
+    # Determine which to keep/remove
+    if keep_type == 'Entity or Trust':
+        header_remove = header_individual
+        header_keep = header_entity
+    else:
+        header_remove = header_entity
+        header_keep = header_individual
+    # Find all paragraphs
+    paragraphs = doc.paragraphs
+    # Find header indices
+    idx_remove = None
+    idx_keep = None
+    for i, p in enumerate(paragraphs):
+        if p.text.strip() == header_remove:
+            idx_remove = i
+        if p.text.strip() == header_keep:
+            idx_keep = i
+    # If both or neither found, insert error/placeholder
+    if idx_remove is None or idx_keep is None or idx_remove == idx_keep:
+        # Insert error at end
+        doc.add_paragraph('[ERROR: Could not find both acknowledgment blocks for removal. Please check your template.]')
+        return doc
+    # Determine block to remove: from idx_remove up to (but not including) idx_keep or end
+    start = idx_remove
+    end = idx_keep if idx_keep > idx_remove else len(paragraphs)
+    # Remove paragraphs in reverse order for safe deletion
+    for i in range(end-1, start-1, -1):
+        p = paragraphs[i]._element
+        p.getparent().remove(p)
+    return doc
+
+def remove_entity_signature_block(doc):
+    """
+    Remove the '[Trust/Entity Name]' signature block and its following lines (By:, Name:, Title:) if present.
+    """
+    sig_header = '[Trust/Entity Name]'
+    sig_lines = ['By:', 'Name:', 'Title:']
+    paragraphs = doc.paragraphs
+    idx_sig = None
+    # Find the signature header
+    for i, p in enumerate(paragraphs):
+        if p.text.strip() == sig_header:
+            idx_sig = i
+            break
+    if idx_sig is not None:
+        # Remove header and next 3 lines (if present)
+        end = min(idx_sig + 4, len(paragraphs))
+        for i in range(end-1, idx_sig-1, -1):
+            p = paragraphs[i]._element
+            p.getparent().remove(p)
+    return doc
+
 @app.route('/lease_population_replace', methods=['POST'])
 def lease_population_replace():
     """
     Endpoint to process DOCX file and replace placeholders with user-provided values.
     Streams the modified DOCX back to the user.
+    Accepts 'track_changes' flag ("true" or "false"), 'document_name', and 'party_type'.
+    If a replacement value is blank, the original placeholder is left in place.
     """
     if 'docx' not in request.files or 'mapping' not in request.form:
         return jsonify({'error': 'Missing file or mapping'}), 400
     docx_file = request.files['docx']
     mapping_json = request.form['mapping']
+    track_changes = request.form.get('track_changes', 'false').lower() == 'true'
+    document_name = request.form.get('document_name', 'lease_population_filled')
+    party_type = request.form.get('party_type', None)
     try:
-        mapping = {item['key']: item['value'] for item in json.loads(mapping_json)}
+        # Only include keys with non-empty values in the mapping
+        mapping_raw = json.loads(mapping_json)
+        mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
     except Exception as e:
         return jsonify({'error': 'Invalid mapping format'}), 400
     # Validate keys
-    if not mapping or any(not k for k in mapping) or len(set(mapping)) != len(mapping):
+    if not mapping_raw or any(not item['key'] for item in mapping_raw) or len(set(item['key'] for item in mapping_raw)) != len(mapping_raw):
         return jsonify({'error': 'Invalid or duplicate keys'}), 400
+    if not party_type:
+        return jsonify({'error': 'Party type is required'}), 400
     # Process DOCX
     try:
         doc = Document(docx_file)
-        doc = replace_placeholders_in_docx(doc, mapping)
+        if track_changes:
+            doc = replace_placeholders_in_docx_with_track_changes(doc, mapping)
+        else:
+            doc = replace_placeholders_in_docx(doc, mapping)
+        # Remove the unselected acknowledgment block
+        doc = remove_acknowledgment_block(doc, party_type)
+        # Remove entity signature block if party_type is Individual
+        if party_type == 'Individual':
+            doc = remove_entity_signature_block(doc)
         # Stream back as download
         from io import BytesIO
         out_stream = BytesIO()
         doc.save(out_stream)
         out_stream.seek(0)
-        return send_file(out_stream, as_attachment=True, download_name='lease_population_filled.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        safe_name = document_name.replace(' ', '_').replace('/', '_')
+        return send_file(out_stream, as_attachment=True, download_name=f'{safe_name}.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as e:
         return jsonify({'error': f'Failed to process DOCX: {str(e)}'}), 500
 

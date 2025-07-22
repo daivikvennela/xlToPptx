@@ -992,14 +992,57 @@
         <div class="tab-content" id="lease-population-tab">
             <div class="main-content">
                 <h1>Lease Population: DOCX Placeholder Replacement</h1>
-                <form id="kvForm" class="upload-form" autocomplete="off">
-                    <div id="kvPairsContainer">
-                        <!-- Dynamic key-value pairs will be inserted here -->
+                <div style="margin-bottom:2rem;">
+                    <label style="font-weight:600; color:#00bfff;">Input Method:</label>
+                    <button type="button" class="secondary-btn" id="manualInputBtn">Manual Entry</button>
+                    <button type="button" class="secondary-btn" id="uploadTableBtn">Upload Table (CSV/Excel)</button>
+                    <button type="button" class="secondary-btn" id="pasteTableBtn">Paste Table</button>
+                </div>
+                <div id="inputMethodManual" style="display:block;">
+                    <form id="kvForm" class="upload-form" autocomplete="off">
+                        <div id="kvPairsContainer">
+                            <!-- Dynamic key-value pairs will be inserted here -->
+                        </div>
+                        <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
+                        <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
+                        <button type="button" class="secondary-btn" id="exportJsonBtn" style="margin-top:1rem;">Export Mapping as JSON</button>
+                    </form>
+                </div>
+                <div id="inputMethodUpload" style="display:none;">
+                    <form id="tableUploadForm" class="upload-form" autocomplete="off" enctype="multipart/form-data">
+                        <input type="file" id="tableFileInput" accept=".csv,.xlsx,.xls" style="margin-bottom:1rem;">
+                        <button type="submit" class="submit-btn">Parse Table</button>
+                    </form>
+                    <div id="tableParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
+                    <div id="tablePreviewSection" style="display:none; margin-top:1rem;">
+                        <h3 style="color:#00bfff;">Parsed Replacement Table</h3>
+                        <table class="preview-table" id="tablePreviewTable">
+                            <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" class="submit-btn" id="useParsedTableBtn" style="margin-top:1rem;">Use This Table</button>
                     </div>
-                    <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
-                    <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
-                    <button type="button" class="secondary-btn" id="exportJsonBtn" style="margin-top:1rem;">Export Mapping as JSON</button>
-                </form>
+                </div>
+                <div id="inputMethodPaste" style="display:none;">
+                    <form id="pasteTableForm" class="upload-form" autocomplete="off">
+                        <textarea id="pasteTableTextarea" placeholder="Paste your table here (tab-separated, as from Excel/Sheets)" style="width:100%; min-height:180px; margin-bottom:1rem; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; padding:1rem;"></textarea>
+                        <button type="submit" class="submit-btn">Parse Table</button>
+                    </form>
+                    <div id="pasteParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
+                    <div id="pastePreviewSection" style="display:none; margin-top:1rem;">
+                        <div id="pasteDocNamePreview" style="color:#00bfff; margin-bottom:0.5rem;"></div>
+                        <h3 style="color:#00bfff;">Parsed Replacement Table</h3>
+                        <table class="preview-table" id="pastePreviewTable">
+                            <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" class="submit-btn" id="usePastedTableBtn" style="margin-top:1rem;">Use This Table</button>
+                    </div>
+                </div>
+                <div style="margin:2rem 0 1rem 0;">
+                    <label style="font-weight:600; color:#00bfff;">Replacement Mode:</label>
+                    <button type="button" class="secondary-btn" id="trackChangesBtn">Track Changes: <span id="trackChangesStatus">OFF</span></button>
+                </div>
                 <div id="kvValidationMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
                 <div id="kvSummarySection" style="display:none; margin-top:2rem;">
                     <h2 style="color:#00bfff; margin-bottom:1rem;">Replacement Summary</h2>
@@ -1008,6 +1051,18 @@
                         <tbody></tbody>
                     </table>
                     <div style="margin-top:2rem;">
+                        <div style="margin-bottom:1.5rem;">
+                            <label style="font-weight:600; color:#00bfff;">Party Type <span style="color:#ff6b6b;">*</span></label>
+                            <div style="margin:0.5rem 0 0.5rem 0;">
+                                <label style="margin-right:2rem;">
+                                    <input type="radio" name="partyType" value="Entity or Trust" required> Entity or Trust
+                                </label>
+                                <label>
+                                    <input type="radio" name="partyType" value="Individual" required> Individual
+                                </label>
+                            </div>
+                            <div style="color:#94a3b8; font-size:0.95em;">Your selection will determine which acknowledgment section remains in your document.</div>
+                        </div>
                         <label for="docxFileInput" style="color:#00bfff; font-weight:500;">Upload DOCX file:</label>
                         <input type="file" id="docxFileInput" accept=".docx" style="margin:1rem 0;">
                         <span id="docxFileName" style="color:#cbd5e0; margin-left:1rem;"></span>
@@ -1715,6 +1770,101 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 });
             });
 
+            // Dual input method logic
+            const manualInputBtn = document.getElementById('manualInputBtn');
+            const uploadTableBtn = document.getElementById('uploadTableBtn');
+            const inputMethodManual = document.getElementById('inputMethodManual');
+            const inputMethodUpload = document.getElementById('inputMethodUpload');
+            const pasteTableBtn = document.getElementById('pasteTableBtn');
+            const inputMethodPaste = document.getElementById('inputMethodPaste');
+            manualInputBtn.onclick = function() {
+                inputMethodManual.style.display = 'block';
+                inputMethodUpload.style.display = 'none';
+                inputMethodPaste.style.display = 'none';
+            };
+            uploadTableBtn.onclick = function() {
+                inputMethodManual.style.display = 'none';
+                inputMethodUpload.style.display = 'block';
+                inputMethodPaste.style.display = 'none';
+            };
+            pasteTableBtn.onclick = function() {
+                inputMethodManual.style.display = 'none';
+                inputMethodUpload.style.display = 'none';
+                inputMethodPaste.style.display = 'block';
+            };
+
+            // Table upload/parse logic
+            const tableUploadForm = document.getElementById('tableUploadForm');
+            const tableFileInput = document.getElementById('tableFileInput');
+            const tableParseMsg = document.getElementById('tableParseMsg');
+            const tablePreviewSection = document.getElementById('tablePreviewSection');
+            const tablePreviewTable = document.getElementById('tablePreviewTable').querySelector('tbody');
+            const useParsedTableBtn = document.getElementById('useParsedTableBtn');
+            let parsedTableMapping = [];
+            let parsedDocumentName = '';
+            if (tableUploadForm) {
+                tableUploadForm.onsubmit = async function(e) {
+                    e.preventDefault();
+                    tableParseMsg.style.display = 'none';
+                    tablePreviewSection.style.display = 'none';
+                    tablePreviewTable.innerHTML = '';
+                    parsedTableMapping = [];
+                    parsedDocumentName = '';
+                    if (!tableFileInput.files || !tableFileInput.files[0]) {
+                        tableParseMsg.textContent = 'Please select a CSV or Excel file.';
+                        tableParseMsg.style.display = 'block';
+                        return;
+                    }
+                    const file = tableFileInput.files[0];
+                    const formData = new FormData();
+                    formData.append('table_file', file);
+                    try {
+                        const response = await fetch('/parse_kv_table', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        if (!response.ok) throw new Error('Failed to parse table');
+                        const data = await response.json();
+                        if (data.error) throw new Error(data.error);
+                        parsedTableMapping = data.mapping;
+                        parsedDocumentName = data.document_name || '';
+                        parsedTableMapping.forEach(pair => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
+                            tablePreviewTable.appendChild(row);
+                        });
+                        tablePreviewSection.style.display = 'block';
+                        if (parsedDocumentName) {
+                            tablePreviewSection.insertAdjacentHTML('afterbegin', `<div style='color:#00bfff; margin-bottom:0.5rem;'>Document Name: <b>${parsedDocumentName}</b></div>`);
+                        }
+                    } catch (err) {
+                        tableParseMsg.textContent = 'Error: ' + err.message;
+                        tableParseMsg.style.display = 'block';
+                    }
+                };
+                useParsedTableBtn.onclick = function() {
+                    // Switch to manual input and populate fields
+                    inputMethodManual.style.display = 'block';
+                    inputMethodUpload.style.display = 'none';
+                    kvPairsContainer.innerHTML = '';
+                    parsedTableMapping.forEach(pair => addPair(pair.key, pair.value));
+                    // Store document name for later
+                    kvForm.parsedDocumentName = parsedDocumentName;
+                    // Auto-select party type
+                    autoSelectPartyTypeFromMapping(parsedTableMapping);
+                };
+            }
+
+            // Track Changes toggle logic
+            let trackChanges = false;
+            const trackChangesBtn = document.getElementById('trackChangesBtn');
+            const trackChangesStatus = document.getElementById('trackChangesStatus');
+            trackChangesBtn.onclick = function() {
+                trackChanges = !trackChanges;
+                trackChangesStatus.textContent = trackChanges ? 'ON' : 'OFF';
+                trackChangesBtn.classList.toggle('active', trackChanges);
+            };
+
             // Dynamic key-value form logic
             const kvPairsContainer = document.getElementById('kvPairsContainer');
             const addPairBtn = document.getElementById('addPairBtn');
@@ -1812,6 +1962,13 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             document.getElementById('replaceDocxBtn').onclick = async function() {
                 docxValidationMsg.style.display = 'none';
                 docxSuccessMsg.style.display = 'none';
+                // Party type required
+                const partyType = document.querySelector('input[name="partyType"]:checked');
+                if (!partyType) {
+                    docxValidationMsg.textContent = 'Please select a Party Type.';
+                    docxValidationMsg.style.display = 'block';
+                    return;
+                }
                 if (!docxInput.files || !docxInput.files[0]) {
                     docxValidationMsg.textContent = 'Please select a DOCX file.';
                     docxValidationMsg.style.display = 'block';
@@ -1827,6 +1984,12 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 const formData = new FormData();
                 formData.append('docx', docxInput.files[0]);
                 formData.append('mapping', JSON.stringify(mapping));
+                formData.append('track_changes', trackChanges ? 'true' : 'false');
+                formData.append('party_type', partyType.value);
+                // If document name was parsed from table, use it
+                if (kvForm.parsedDocumentName) {
+                    formData.append('document_name', kvForm.parsedDocumentName);
+                }
                 // Show loading
                 this.disabled = true;
                 this.textContent = 'Processing...';
@@ -1838,13 +2001,13 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     if (!response.ok) throw new Error('Failed to process DOCX');
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
-                    // Show download link and success message
-                    docxSuccessMsg.innerHTML = `<a href="${url}" download="lease_population_filled.docx" style="color:#00bfff; text-decoration:underline;">Download replaced DOCX file</a> <span style='color:#22c55e;'>&#10003; Success!</span>`;
+                    let downloadName = (kvForm.parsedDocumentName ? kvForm.parsedDocumentName.replace(/\s+/g, '_') : 'lease_population_filled') + '.docx';
+                    docxSuccessMsg.innerHTML = `<a href="${url}" download="${downloadName}" style="color:#00bfff; text-decoration:underline;">Download replaced DOCX file</a> <span style='color:#22c55e;'>&#10003; Success!</span>`;
                     docxSuccessMsg.style.display = 'block';
                     // Optionally, auto-download as well
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'lease_population_filled.docx';
+                    a.download = downloadName;
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
@@ -1857,9 +2020,96 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     this.textContent = 'Replace Placeholders & Download';
                 }
             };
+
+            // Paste Table logic
+            const pasteTableForm = document.getElementById('pasteTableForm');
+            const pasteTableTextarea = document.getElementById('pasteTableTextarea');
+            const pasteParseMsg = document.getElementById('pasteParseMsg');
+            const pastePreviewSection = document.getElementById('pastePreviewSection');
+            const pastePreviewTable = document.getElementById('pastePreviewTable').querySelector('tbody');
+            const pasteDocNamePreview = document.getElementById('pasteDocNamePreview');
+            const usePastedTableBtn = document.getElementById('usePastedTableBtn');
+            let pastedTableMapping = [];
+            let pastedDocumentName = '';
+            if (pasteTableForm) {
+                pasteTableForm.onsubmit = function(e) {
+                    e.preventDefault();
+                    pasteParseMsg.style.display = 'none';
+                    pastePreviewSection.style.display = 'none';
+                    pastePreviewTable.innerHTML = '';
+                    pasteDocNamePreview.textContent = '';
+                    pastedTableMapping = [];
+                    pastedDocumentName = '';
+                    const text = pasteTableTextarea.value.trim();
+                    if (!text) {
+                        pasteParseMsg.textContent = 'Please paste your table.';
+                        pasteParseMsg.style.display = 'block';
+                        return;
+                    }
+                    const lines = text.split(/\r?\n/).filter(l => l.trim());
+                    if (lines.length < 2) {
+                        pasteParseMsg.textContent = 'Table must have at least a document name and one key-value pair.';
+                        pasteParseMsg.style.display = 'block';
+                        return;
+                    }
+                    // Parse first row for document name
+                    const firstRow = lines[0].split(/\t|\s{2,}/);
+                    pastedDocumentName = (firstRow[1] || '').trim() || 'lease_population_filled';
+                    // Parse subsequent rows for key-value pairs
+                    for (let i = 1; i < lines.length; ++i) {
+                        const row = lines[i].split(/\t|\s{2,}/);
+                        if (row.length >= 2 && row[0].trim()) {
+                            pastedTableMapping.push({key: row[0].trim(), value: row[1].trim()});
+                        }
+                    }
+                    if (pastedTableMapping.length === 0) {
+                        pasteParseMsg.textContent = 'No valid key-value pairs found.';
+                        pasteParseMsg.style.display = 'block';
+                        return;
+                    }
+                    // Validate uniqueness
+                    const keys = pastedTableMapping.map(p => p.key);
+                    if (new Set(keys).size !== keys.length) {
+                        pasteParseMsg.textContent = 'Placeholders must be unique.';
+                        pasteParseMsg.style.display = 'block';
+                        return;
+                    }
+                    pasteDocNamePreview.innerHTML = `Document Name: <b>${pastedDocumentName}</b>`;
+                    pastedTableMapping.forEach(pair => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
+                        pastePreviewTable.appendChild(row);
+                    });
+                    pastePreviewSection.style.display = 'block';
+                };
+                usePastedTableBtn.onclick = function() {
+                    // Switch to manual input and populate fields
+                    inputMethodManual.style.display = 'block';
+                    inputMethodPaste.style.display = 'none';
+                    kvPairsContainer.innerHTML = '';
+                    pastedTableMapping.forEach(pair => addPair(pair.key, pair.value));
+                    kvForm.parsedDocumentName = pastedDocumentName;
+                    // Auto-select party type
+                    autoSelectPartyTypeFromMapping(pastedTableMapping);
+                };
+            }
         }
         // Activate Lease Population tab logic on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', activateLeasePopulationTab);
+
+        // After parsing any table (upload or paste), auto-select Party Type if [Grantor Type] is present
+        function autoSelectPartyTypeFromMapping(mapping) {
+            const grantor = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantor type]');
+            if (grantor) {
+                const val = grantor.value.trim().toLowerCase();
+                const partyRadios = document.querySelectorAll('input[name="partyType"]');
+                if (val === 'individual') {
+                    partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
+                } else if (val) {
+                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                }
+            }
+        }
     </script>
 </body>
 </html> 
