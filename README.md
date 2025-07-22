@@ -1,4 +1,4 @@
-# Excel to PowerPoint Converter
+# AI powered Lease Population and Slide Deck Automation
 
 A simple web application that converts Excel files to PowerPoint presentations. The application creates a PowerPoint presentation with a title slide and a data table containing the Excel data.
 
