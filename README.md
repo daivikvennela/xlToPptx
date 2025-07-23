@@ -1,4 +1,4 @@
-# Excel to PowerPoint Converter
+# AI powered Lease Population and Slide Deck Automation
 
 A simple web application that converts Excel files to PowerPoint presentations. The application creates a PowerPoint presentation with a title slide and a data table containing the Excel data.
 
@@ -99,4 +99,4 @@ This feature introduces a new tab in the web app for pixel-perfect editing of si
 - Only target shapes by `shape_id`
 - Only clear text via existing `run.text` objects and set new content on the first run—never create new runs or change formatting
 - All PPTX templates are immutable; each request clones directly from them
-- Regenerate `.map.json` whenever a designer edits any template PPTX 
+- Regenerate `.map.json` whenever a designer edits any template PPTX
