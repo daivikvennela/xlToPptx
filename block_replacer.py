@@ -42,9 +42,9 @@ def get_all_block_previews(grantor_name, trust_entity_name, name, title, state, 
     return preview
 
 def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
-    # Determine party type
-    grantee_type = mapping.get('[Grantee Type]', '').strip().lower()
-    is_individual = grantee_type == 'individual'
+    # Determine party type (robust: use [Grantor Type] if present, fallback to [Grantee Type])
+    party_type = mapping.get('[Grantor Type]', '').strip().lower() or mapping.get('[Grantee Type]', '').strip().lower()
+    is_individual = party_type in ('individual', 'i')
     # Prepare values for template filling
     grantor_name = mapping.get('[Grantor Name]', '')
     trust_entity_name = mapping.get('[Trust/Entity Name]', '')
