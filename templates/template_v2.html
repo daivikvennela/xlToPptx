@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Template Version 2: Dynamic PPTX Slide Customization</title>
+    <style>
+        body { background: #f5f0fa; color: #2d004d; }
+        .header { background: #7c3aed; color: white; padding: 1em; }
+        .editor-container { background: white; border-radius: 8px; box-shadow: 0 2px 8px #7c3aed33; margin: 2em auto; max-width: 700px; padding: 2em; }
+        .btn-purple { background: #7c3aed; color: white; border: none; padding: 0.5em 1.5em; border-radius: 4px; font-size: 1.1em; }
+        textarea { width: 100%; min-height: 60px; margin-bottom: 1em; border: 1px solid #7c3aed; border-radius: 4px; padding: 0.5em; }
+        label { font-weight: bold; color: #7c3aed; }
+        .template-select { margin-bottom: 1.5em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Template Version 2: Dynamic PPTX Slide Customization</h1>
+    </div>
+    <div class="editor-container">
+        <div class="template-select">
+            <label for="templateDropdown">Choose a template:</label>
+            <select id="templateDropdown">
+                <option value="Pineview - Module Procurement and LNTP2 - [testing]">Pineview - Module Procurement and LNTP2 - [testing]</option>
+            </select>
+        </div>
+        <div id="editor">
+            <!-- DynamicSlideEditor UI will be rendered here -->
+        </div>
+        <button class="btn-purple" id="downloadBtn">Download Customized PPTX</button>
+    </div>
+    <script src="/static/js/textbox-editor.js"></script>
+    <script>
+        let editor;
+        document.getElementById('templateDropdown').addEventListener('change', function() {
+            const template = this.value;
+            editor = new DynamicSlideEditor(template);
+            editor.load();
+        });
+        // Auto-load the first template
+        window.addEventListener('DOMContentLoaded', function() {
+            const template = document.getElementById('templateDropdown').value;
+            editor = new DynamicSlideEditor(template);
+            editor.load();
+            document.getElementById('downloadBtn').onclick = function() { editor.save(); };
+        });
+    </script>
+</body>
+</html> 

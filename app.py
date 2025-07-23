@@ -23,6 +23,16 @@ import re
 import csv
 from docx.shared import RGBColor
 
+# --- Template Version 2: Dynamic PPTX Slide Customization ---
+try:
+    from slide_utils.shape_mapper import build_map
+    from slide_utils.format_preserver import inject_text
+except ImportError:
+    build_map = None
+    inject_text = None
+
+TEMPLATE_V2_DIR = 'templates/slide_templates/msa_exec/mainTemp'
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -624,38 +634,62 @@ def create_powerpoint_presentation(content, customizations, pptx_file):
     prs.save(pptx_file)
 
 def normalize_placeholder_key(key):
-    """Return the key with and without brackets for matching."""
-    k = key.strip()
-    if k.startswith('[') and k.endswith(']'):
-        return [k, k[1:-1].strip()]
-    return [k, f'[{k}]']
+    """Return only the key as-is for direct matching (no variants)."""
+    return [key.strip()]
+
+def strip_brackets(placeholder):
+    """Remove surrounding brackets from a placeholder if present."""
+    s = placeholder.strip()
+    if s.startswith('[') and s.endswith(']'):
+        return s[1:-1].strip()
+    return s
 
 def replace_placeholders_in_docx(doc: Document, mapping: dict):
     """
     Replace all placeholders in the DOCX document with their corresponding values from mapping.
     Handles split runs and preserves formatting.
+    Only replaces exact keys as provided in the mapping, and only if the value is non-empty.
+    Ensures font and bold/italic consistency after replacement.
     Excludes brackets from the replaced value.
     """
     def replace_in_runs(runs, mapping):
+        # Gather original formatting from the first run
+        if runs:
+            first_run = runs[0]
+            orig_font_name = first_run.font.name
+            orig_font_size = first_run.font.size
+            orig_bold = first_run.font.bold
+            orig_italic = first_run.font.italic
+        else:
+            orig_font_name = orig_font_size = orig_bold = orig_italic = None
         full_text = ''.join(run.text for run in runs)
         for key, value in mapping.items():
+            if not value.strip():
+                continue  # Skip empty values
             for variant in normalize_placeholder_key(key):
-                if variant in full_text:
-                    # Replace with value, excluding brackets
-                    full_text = full_text.replace(variant, value)
+                # Replace the placeholder, but exclude brackets in the output
+                full_text = full_text.replace(variant, value)
+                # Also replace the bracketless version if present
+                bracketless = strip_brackets(variant)
+                if bracketless != variant:
+                    full_text = full_text.replace(bracketless, value)
+        # Re-split the new text into the same number of runs
         idx = 0
         for run in runs:
             run_len = len(run.text)
             run.text = full_text[idx:idx+run_len]
+            # Apply consistent formatting
+            run.font.name = orig_font_name
+            run.font.size = orig_font_size
+            run.font.bold = orig_bold
+            run.font.italic = orig_italic
             idx += run_len
 
     def process_paragraph(paragraph, mapping):
-        # If the key is split across runs, we need to join, replace, and re-split
         if not paragraph.runs:
             return
-        # Only process if any key is present in the joined text
         joined = ''.join(run.text for run in paragraph.runs)
-        if any(variant in joined for key in mapping for variant in normalize_placeholder_key(key)):
+        if any(variant in joined for key, value in mapping.items() if value.strip() for variant in normalize_placeholder_key(key)):
             replace_in_runs(paragraph.runs, mapping)
 
     def process_table(table, mapping):
@@ -684,17 +718,32 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
 
 def replace_placeholders_in_docx_with_track_changes(doc: Document, mapping: dict):
     """
-    Instead of direct replacement, highlight the placeholder and append the new value as a suggestion.
+    Instead of direct replacement, highlight the placeholder and replace it with the new value (no brackets) as a suggestion.
+    Only replaces exact keys as provided in the mapping, and only if the value is non-empty.
     Excludes brackets from the replaced value.
     """
     def process_paragraph(paragraph, mapping):
         for run in paragraph.runs:
             for key, value in mapping.items():
+                if not value.strip():
+                    continue  # Skip empty values
+                replaced = False
                 for variant in normalize_placeholder_key(key):
+                    # Replace the placeholder, but exclude brackets in the output
                     if variant in run.text:
-                        # Instead of replacing, highlight and append suggestion (exclude brackets)
-                        run.text = run.text.replace(variant, variant)
-                        add_comment_to_run(run, value)
+                        run.text = run.text.replace(variant, value)
+                        run.font.highlight_color = 7  # yellow
+                        replaced = True
+                        break
+                    # Also replace the bracketless version if present
+                    bracketless = strip_brackets(variant)
+                    if bracketless != variant and bracketless in run.text:
+                        run.text = run.text.replace(bracketless, value)
+                        run.font.highlight_color = 7  # yellow
+                        replaced = True
+                        break
+                if replaced:
+                    break
 
     def process_table(table, mapping):
         for row in table.rows:
@@ -786,11 +835,11 @@ def remove_acknowledgment_block(doc, keep_type):
     - The block to remove starts at its header and includes all following paragraphs up to the next block's header or end of document.
     - If both or neither block is found, insert a placeholder or error message.
     """
-    # Define headers
-    header_entity = 'Acknowledgment Block for Entity or Trust'
-    header_individual = 'Acknowledgment Block for Individual'
+    # Define headers (case-insensitive, strip whitespace)
+    header_entity = 'acknowledgment block for entity or trust'
+    header_individual = 'acknowledgment block for individual'
     # Determine which to keep/remove
-    if keep_type == 'Entity or Trust':
+    if keep_type.lower() == 'entity or trust':
         header_remove = header_individual
         header_keep = header_entity
     else:
@@ -798,23 +847,21 @@ def remove_acknowledgment_block(doc, keep_type):
         header_keep = header_individual
     # Find all paragraphs
     paragraphs = doc.paragraphs
-    # Find header indices
     idx_remove = None
     idx_keep = None
     for i, p in enumerate(paragraphs):
-        if p.text.strip() == header_remove:
+        text = p.text.strip().lower()
+        if text == header_remove:
             idx_remove = i
-        if p.text.strip() == header_keep:
+        if text == header_keep:
             idx_keep = i
     # If both or neither found, insert error/placeholder
     if idx_remove is None or idx_keep is None or idx_remove == idx_keep:
-        # Insert error at end
         doc.add_paragraph('[ERROR: Could not find both acknowledgment blocks for removal. Please check your template.]')
         return doc
     # Determine block to remove: from idx_remove up to (but not including) idx_keep or end
     start = idx_remove
     end = idx_keep if idx_keep > idx_remove else len(paragraphs)
-    # Remove paragraphs in reverse order for safe deletion
     for i in range(end-1, start-1, -1):
         p = paragraphs[i]._element
         p.getparent().remove(p)
@@ -824,23 +871,76 @@ def remove_entity_signature_block(doc):
     """
     Remove the '[Trust/Entity Name]' signature block and its following lines (By:, Name:, Title:) if present.
     """
-    sig_header = '[Trust/Entity Name]'
-    sig_lines = ['By:', 'Name:', 'Title:']
+    sig_header = '[trust/entity name]'
+    sig_lines = ['by:', 'name:', 'title:']
     paragraphs = doc.paragraphs
     idx_sig = None
-    # Find the signature header
     for i, p in enumerate(paragraphs):
-        if p.text.strip() == sig_header:
+        if p.text.strip().lower() == sig_header:
             idx_sig = i
             break
     if idx_sig is not None:
-        # Remove header and next 3 lines (if present)
         end = min(idx_sig + 4, len(paragraphs))
         for i in range(end-1, idx_sig-1, -1):
             p = paragraphs[i]._element
             p.getparent().remove(p)
     return doc
 
+def remove_acknowledgment_blocks_enforced(doc, grantee_type):
+    """
+    Remove or retain sections based on grantee_type ('Individual' or 'Entity or Trust') using explicit start/end markers.
+    For individuals:
+      - Remove entity sections:
+        1. [Trust/Entity Name] → My Commission Expires:___
+        2. Acknowledgment Block for Entity or Trust → (Signature of Notary Public)
+    For entities:
+      - Remove individual sections:
+        1. GRANTOR: → Name:
+        2. Acknowledgment Block for Individual → (Signature of Notary Public)
+    Only the relevant sections remain in the final document.
+    If a marker is not found, return a clear error message.
+    """
+    grantee_type = grantee_type.strip().lower()
+    paragraphs = doc.paragraphs
+    def find_section_indices(start_marker, end_marker, section_label):
+        indices = []
+        start = None
+        start_idx = None
+        for i, p in enumerate(paragraphs):
+            text = p.text.strip().lower()
+            if start is None and start_marker.strip().lower() in text:
+                start = i
+                start_idx = i
+            elif start is not None and end_marker.strip().lower() in text:
+                indices.append((start, i))
+                start = None
+        if start is not None:
+            context = '\n'.join(f'{j}: {paragraphs[j].text}' for j in range(max(0, start_idx-2), min(len(paragraphs), start_idx+5)))
+            raise Exception(f"Could not find END marker '{end_marker}' for section '{section_label}'.\nContext:\n{context}")
+        if not indices and start_marker:
+            context = '\n'.join(f'{j}: {paragraphs[j].text}' for j in range(len(paragraphs)))
+            raise Exception(f"Could not find START marker '{start_marker}' for section '{section_label}'.\nParagraphs:\n{context}")
+        return indices
+    to_remove = []
+    if grantee_type == 'individual':
+        # Remove entity sections
+        entity1 = find_section_indices('[trust/entity name]', 'my commission expires:___', 'Entity Section 1')
+        entity2 = find_section_indices('acknowledgment block for entity or trust', '(signature of notary public)', 'Entity Section 2')
+        to_remove.extend(entity1)
+        to_remove.extend(entity2)
+    else:
+        # Remove individual sections
+        ind1 = find_section_indices('grantor:', 'name:', 'Individual Section 1')
+        ind2 = find_section_indices('acknowledgment block for individual', '(signature of notary public)', 'Individual Section 2')
+        to_remove.extend(ind1)
+        to_remove.extend(ind2)
+    for start, end in sorted(to_remove, reverse=True):
+        for i in range(end, start-1, -1):
+            p = paragraphs[i]._element
+            p.getparent().remove(p)
+    return doc
+
+# Update lease_population_replace to use the new enforcement function
 @app.route('/lease_population_replace', methods=['POST'])
 def lease_population_replace():
     """
@@ -874,8 +974,8 @@ def lease_population_replace():
             doc = replace_placeholders_in_docx_with_track_changes(doc, mapping)
         else:
             doc = replace_placeholders_in_docx(doc, mapping)
-        # Remove the unselected acknowledgment block
-        doc = remove_acknowledgment_block(doc, party_type)
+        # Enforce only one acknowledgment block remains
+        doc = remove_acknowledgment_blocks_enforced(doc, party_type)
         # Remove entity signature block if party_type is Individual
         if party_type == 'Individual':
             doc = remove_entity_signature_block(doc)
@@ -1516,6 +1616,28 @@ def apply_slide_formatting(slide, section):
     except Exception as e:
         print(f"Warning: Could not apply formatting to {section}: {str(e)}")
         # Continue without failing the entire process
+
+# --- Template Version 2: Dynamic PPTX Slide Customization ---
+@app.route('/template_v2')
+def template_v2():
+    # Render the new tab with purple color scheme
+    return render_template('template_v2.html', color_scheme='purple')
+
+@app.route('/api/template_v2/<template>', methods=['GET'])
+def get_template_v2_map(template):
+    map_file = os.path.join(TEMPLATE_V2_DIR, f"{template}.map.json")
+    if not os.path.exists(map_file):
+        return {"error": "Mapping not found."}, 404
+    return send_file(map_file, mimetype='application/json')
+
+@app.route('/api/render_slide_v2', methods=['POST'])
+def render_slide_v2():
+    req = request.get_json()
+    pptx_path = os.path.join(TEMPLATE_V2_DIR, f"{req['template']}.pptx")
+    if not inject_text:
+        return {"error": "Backend not fully implemented."}, 500
+    out_pptx = inject_text(pptx_path, req['updates'])
+    return send_file(out_pptx, as_attachment=True, download_name=f"{req['template']}_custom.pptx")
 
 if __name__ == '__main__':
     app.run(debug=True) 

@@ -670,6 +670,9 @@
                 <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li>
                 <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li>
                 <li><a href="#" class="nav-link" data-tab="lease-population">Lease Population</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/template_v2" style="color: white; background: purple;">Template Version 2</a>
+                </li>
             </ul>
         </div>
     </nav>
@@ -2097,15 +2100,46 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // Activate Lease Population tab logic on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', activateLeasePopulationTab);
 
-        // After parsing any table (upload or paste), auto-select Party Type if [Grantor Type] is present
+        // After parsing any table (upload or paste), auto-select Party Type if [Grantee Type], [Grantor Type], or [Grantee Name] is present
         function autoSelectPartyTypeFromMapping(mapping) {
+            const partyRadios = document.querySelectorAll('input[name="partyType"]');
+            // 1. Try [Grantee Type] first
+            const granteeType = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantee type]');
+            if (granteeType) {
+                const val = granteeType.value.trim().toLowerCase();
+                if (val === 'individual') {
+                    partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
+                    return;
+                } else if (val) {
+                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                    return;
+                }
+            }
+            // 2. Try [Grantor Type] logic as before
             const grantor = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantor type]');
             if (grantor) {
                 const val = grantor.value.trim().toLowerCase();
-                const partyRadios = document.querySelectorAll('input[name="partyType"]');
                 if (val === 'individual') {
                     partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
+                    return;
                 } else if (val) {
+                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                    return;
+                }
+            }
+            // 3. Fallback: Try to infer from [Grantee Name]
+            const grantee = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantee name]');
+            if (grantee && grantee.value) {
+                const name = grantee.value.trim();
+                // Heuristic: if name contains Inc, LLC, Trust, Corp, Ltd, LP, LLP, select Entity or Trust
+                const entityKeywords = /\b(inc|llc|trust|corp|ltd|lp|llp|plc|company|co\.?|foundation|association|partners|group)\b/i;
+                if (entityKeywords.test(name)) {
+                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                } else if (/\s/.test(name)) {
+                    // If name contains a space and doesn't look like an entity, assume Individual
+                    partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
+                } else {
+                    // Default to Entity or Trust if unsure
                     partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
                 }
             }
