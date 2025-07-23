@@ -22,6 +22,11 @@ from docx import Document
 import re
 import csv
 from docx.shared import RGBColor
+from flask import request, jsonify
+from block_replacer import get_all_block_previews
+from block_replacer import replace_signature_and_notary_blocks
+from docx import Document
+from block_replacer import generate_signature_block, generate_notary_block
 
 # --- Template Version 2: Dynamic PPTX Slide Customization ---
 try:
@@ -651,39 +656,23 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
     Only replaces exact keys as provided in the mapping, and only if the value is non-empty.
     Ensures font and bold/italic consistency after replacement.
     Excludes brackets from the replaced value.
+    Also processes footnotes for replacements.
     """
     def replace_in_runs(runs, mapping):
-        # Gather original formatting from the first run
-        if runs:
-            first_run = runs[0]
-            orig_font_name = first_run.font.name
-            orig_font_size = first_run.font.size
-            orig_bold = first_run.font.bold
-            orig_italic = first_run.font.italic
-        else:
-            orig_font_name = orig_font_size = orig_bold = orig_italic = None
         full_text = ''.join(run.text for run in runs)
         for key, value in mapping.items():
             if not value.strip():
                 continue  # Skip empty values
             for variant in normalize_placeholder_key(key):
-                # Replace the placeholder, but exclude brackets in the output
                 full_text = full_text.replace(variant, value)
-                # Also replace the bracketless version if present
                 bracketless = strip_brackets(variant)
                 if bracketless != variant:
                     full_text = full_text.replace(bracketless, value)
-        # Re-split the new text into the same number of runs
-        idx = 0
-        for run in runs:
-            run_len = len(run.text)
-            run.text = full_text[idx:idx+run_len]
-            # Apply consistent formatting
-            run.font.name = orig_font_name
-            run.font.size = orig_font_size
-            run.font.bold = orig_bold
-            run.font.italic = orig_italic
-            idx += run_len
+        # Set the full new text in the first run, clear the rest
+        if runs:
+            runs[0].text = full_text
+            for run in runs[1:]:
+                run.text = ''
 
     def process_paragraph(paragraph, mapping):
         if not paragraph.runs:
@@ -714,6 +703,11 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
         footer = section.footer
         process_block(header, mapping)
         process_block(footer, mapping)
+    # Footnotes (if present)
+    if hasattr(doc, 'part') and hasattr(doc.part, 'footnotes'):
+        for footnote in doc.part.footnotes.part.footnotes:
+            for paragraph in footnote.paragraphs:
+                process_paragraph(paragraph, mapping)
     return doc
 
 def replace_placeholders_in_docx_with_track_changes(doc: Document, mapping: dict):
@@ -955,7 +949,7 @@ def lease_population_replace():
     mapping_json = request.form['mapping']
     track_changes = request.form.get('track_changes', 'false').lower() == 'true'
     document_name = request.form.get('document_name', 'lease_population_filled')
-    party_type = request.form.get('party_type', None)
+    # party_type = request.form.get('party_type', None)
     try:
         # Only include keys with non-empty values in the mapping
         mapping_raw = json.loads(mapping_json)
@@ -965,8 +959,8 @@ def lease_population_replace():
     # Validate keys
     if not mapping_raw or any(not item['key'] for item in mapping_raw) or len(set(item['key'] for item in mapping_raw)) != len(mapping_raw):
         return jsonify({'error': 'Invalid or duplicate keys'}), 400
-    if not party_type:
-        return jsonify({'error': 'Party type is required'}), 400
+    # if not party_type:
+    #     return jsonify({'error': 'Party type is required'}), 400
     # Process DOCX
     try:
         doc = Document(docx_file)
@@ -974,11 +968,10 @@ def lease_population_replace():
             doc = replace_placeholders_in_docx_with_track_changes(doc, mapping)
         else:
             doc = replace_placeholders_in_docx(doc, mapping)
-        # Enforce only one acknowledgment block remains
-        doc = remove_acknowledgment_blocks_enforced(doc, party_type)
-        # Remove entity signature block if party_type is Individual
-        if party_type == 'Individual':
-            doc = remove_entity_signature_block(doc)
+        # Temporarily skip party type section removal
+        # doc = remove_acknowledgment_blocks_enforced(doc, party_type)
+        # if party_type == 'Individual':
+        #     doc = remove_entity_signature_block(doc)
         # Stream back as download
         from io import BytesIO
         out_stream = BytesIO()
@@ -987,7 +980,87 @@ def lease_population_replace():
         safe_name = document_name.replace(' ', '_').replace('/', '_')
         return send_file(out_stream, as_attachment=True, download_name=f'{safe_name}.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as e:
-        return jsonify({'error': f'Failed to process DOCX: {str(e)}'}), 500
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in lease_population_replace: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
+
+@app.route('/test_party_type', methods=['POST'])
+def test_party_type():
+    if 'docx' not in request.files or 'mapping' not in request.form:
+        return jsonify({'error': 'Missing file or mapping'}), 400
+    docx_file = request.files['docx']
+    mapping_json = request.form['mapping']
+    party_type = request.form.get('party_type', '').strip()
+    try:
+        mapping_raw = json.loads(mapping_json)
+        mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
+        mapping['[Grantor Type]'] = party_type
+    except Exception as e:
+        return jsonify({'error': 'Invalid mapping format'}), 400
+    try:
+        doc = Document(docx_file)
+        # Prepare values for template filling
+        grantor_name = mapping.get('[Grantor Name]', '')
+        trust_entity_name = mapping.get('[Trust/Entity Name]', '')
+        name = mapping.get('[Name]', '')
+        title = mapping.get('[Title]', '')
+        state = mapping.get('[State]', '')
+        county = mapping.get('[County]', '')
+        name_of_individuals = mapping.get('[NAME(S) OF INDIVIDUAL(S)]', '')
+        type_of_authority = mapping.get('[TYPE OF AUTHORITY]', '')
+        instrument_for = mapping.get('[NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR]', '')
+        is_individual = party_type.lower() == 'individual'
+        if is_individual:
+            sig_block = generate_signature_block(grantor_name, block_type='individual')
+            notary_block = generate_notary_block(state, county, name_of_individuals, block_type='individual')
+        else:
+            sig_block = generate_signature_block(grantor_name, trust_entity_name, name, title, block_type='entity')
+            notary_block = generate_notary_block(state, county, name_of_individuals, type_of_authority, instrument_for, block_type='entity')
+        # Replacement logic (robust, all locations)
+        def replace_blocks_in_runs(runs):
+            for run in runs:
+                if '[Signature Block]' in run.text:
+                    run.text = run.text.replace('[Signature Block]', sig_block)
+                if '[Notary Block]' in run.text:
+                    run.text = run.text.replace('[Notary Block]', notary_block)
+        def process_paragraph(paragraph):
+            replace_blocks_in_runs(paragraph.runs)
+        def process_table(table):
+            for row in table.rows:
+                for cell in row.cells:
+                    process_block(cell)
+        def process_block(block):
+            for paragraph in block.paragraphs:
+                process_paragraph(paragraph)
+            for table in getattr(block, 'tables', []):
+                process_table(table)
+        # Main document
+        for paragraph in doc.paragraphs:
+            process_paragraph(paragraph)
+        for table in doc.tables:
+            process_table(table)
+        # Headers and footers
+        for section in doc.sections:
+            process_block(section.header)
+            process_block(section.footer)
+        # Footnotes
+        if hasattr(doc, 'part') and hasattr(doc.part, 'footnotes'):
+            for footnote in doc.part.footnotes.part.footnotes:
+                for paragraph in footnote.paragraphs:
+                    process_paragraph(paragraph)
+        from io import BytesIO
+        out_stream = BytesIO()
+        doc.save(out_stream)
+        out_stream.seek(0)
+        return send_file(out_stream, as_attachment=True, download_name='party_type_test.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in test_party_type: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
 
 @app.route('/', methods=['GET'])
 def index():
@@ -1638,6 +1711,44 @@ def render_slide_v2():
         return {"error": "Backend not fully implemented."}, 500
     out_pptx = inject_text(pptx_path, req['updates'])
     return send_file(out_pptx, as_attachment=True, download_name=f"{req['template']}_custom.pptx")
+
+@app.route('/block_preview', methods=['POST'])
+def block_preview():
+    data = request.get_json()
+    grantor_name = data.get('grantor_name', '')
+    trust_entity_name = data.get('trust_entity_name', '')
+    name = data.get('name', '')
+    title = data.get('title', '')
+    state = data.get('state', '')
+    county = data.get('county', '')
+    name_of_individuals = data.get('name_of_individuals', '')
+    type_of_authority = data.get('type_of_authority', '')
+    instrument_for = data.get('instrument_for', '')
+    preview = get_all_block_previews(
+        grantor_name, trust_entity_name, name, title, state, county, name_of_individuals, type_of_authority, instrument_for
+    )
+    return jsonify({'preview': preview})
+
+@app.route('/get_party_block_templates', methods=['POST'])
+def get_party_block_templates():
+    data = request.get_json()
+    party_type = (data.get('party_type') or '').strip().lower()
+    import os
+    base = os.path.join('templates', 'blocks')
+    if party_type == 'individual':
+        sig_file = os.path.join(base, 'individual_signature.txt')
+        notary_file = os.path.join(base, 'individual_notary.txt')
+    else:
+        sig_file = os.path.join(base, 'entity_signature.txt')
+        notary_file = os.path.join(base, 'entity_notary.txt')
+    try:
+        with open(sig_file, 'r') as f:
+            sig_block = f.read()
+        with open(notary_file, 'r') as f:
+            notary_block = f.read()
+        return jsonify({'signature_block': sig_block, 'notary_block': notary_block})
+    except Exception as e:
+        return jsonify({'error': f'Could not load template: {str(e)}'}), 400
 
 if __name__ == '__main__':
     app.run(debug=True) 

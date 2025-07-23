@@ -1053,23 +1053,19 @@
                         <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
                         <tbody></tbody>
                     </table>
+                    <button type="button" class="secondary-btn" id="autofillPartyBlocksBtn" style="margin-bottom:1rem;">Autofill Party Blocks</button>
+                    <div id="partyTypeDisplay" style="margin-bottom:1rem; color: #b5e0ff; font-weight: 600;"></div>
                     <div style="margin-top:2rem;">
-                        <div style="margin-bottom:1.5rem;">
-                            <label style="font-weight:600; color:#00bfff;">Party Type <span style="color:#ff6b6b;">*</span></label>
-                            <div style="margin:0.5rem 0 0.5rem 0;">
-                                <label style="margin-right:2rem;">
-                                    <input type="radio" name="partyType" value="Entity or Trust" required> Entity or Trust
-                                </label>
-                                <label>
-                                    <input type="radio" name="partyType" value="Individual" required> Individual
-                                </label>
-                            </div>
-                            <div style="color:#94a3b8; font-size:0.95em;">Your selection will determine which acknowledgment section remains in your document.</div>
-                        </div>
                         <label for="docxFileInput" style="color:#00bfff; font-weight:500;">Upload DOCX file:</label>
                         <input type="file" id="docxFileInput" accept=".docx" style="margin:1rem 0;">
                         <span id="docxFileName" style="color:#cbd5e0; margin-left:1rem;"></span>
                         <button type="button" class="submit-btn" id="replaceDocxBtn">Replace Placeholders & Download</button>
+                        <button type="button" class="secondary-btn" id="generateBlockPreviewBtn" style="margin-left:1rem;">Generate Preview</button>
+                        <button type="button" class="secondary-btn" id="testPartyTypeBtn" style="margin-left:1rem;">Test Party Type</button>
+                    </div>
+                    <div id="blockPreviewSection" style="display:none; margin-top:2rem;">
+                        <h3 style="color: #00bfff;">Signature & Notary Block Previews</h3>
+                        <div id="blockPreviewContent" style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;"></div>
                     </div>
                     <div id="docxValidationMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
                     <div id="docxSuccessMsg" style="color:#00bfff; margin:1rem 0; display:none;"></div>
@@ -1897,6 +1893,20 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             addPair();
             addPairBtn.onclick = function() { addPair(); };
 
+            // Ensure updatePartyTypeDisplay is globally available
+            function updatePartyTypeDisplay() {
+                const mapping = kvForm.kvMapping || [];
+                const grantorType = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantor type]');
+                const display = document.getElementById('partyTypeDisplay');
+                if (grantorType && grantorType.value) {
+                    display.textContent = `Detected Party Type: ${grantorType.value.trim()}`;
+                    display.setAttribute('data-party-type', grantorType.value.trim());
+                } else {
+                    display.textContent = 'Detected Party Type: (not set)';
+                    display.setAttribute('data-party-type', '');
+                }
+            }
+
             kvForm.onsubmit = function(e) {
                 e.preventDefault();
                 kvValidationMsg.style.display = 'none';
@@ -1913,16 +1923,48 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     kvValidationMsg.style.display = 'block';
                     return;
                 }
+                // Detect party type
+                const grantorType = keys.map(k => k.toLowerCase()).indexOf('[grantor type]') !== -1 ? values[keys.map(k => k.toLowerCase()).indexOf('[grantor type]')].trim().toLowerCase() : '';
+                // Generate block values
+                let sigBlock = '', notaryBlock = '';
+                if (grantorType === 'individual') {
+                    sigBlock = `GRANTOR:\n\n[Grantor Name]\n\n\nBy:\t\nName:\t`;
+                    notaryBlock = `Acknowledgment Block for Individual\nState of [State]\n\nCounty of [County]\n\nThis record was acknowledged before me on _______________, by [NAME(S) OF INDIVIDUAL(S)].\n\n\n(Signature of Notary Public)\n`;
+                } else if (grantorType === 'entity' || grantorType === 'trust') {
+                    sigBlock = `[Trust/Entity Name]\n\nBy:\t\nName:\t\nTitle:\t`;
+                    notaryBlock = `Acknowledgment Block for Entity or Trust\nState of [State]\n\nCounty of [County]\n\nThis record was acknowledged before me on _______________, by [NAME(S) OF INDIVIDUAL(S)] as [TYPE OF AUTHORITY] of [NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR].\n\n\n(Signature of Notary Public)\n\nMy Commission Expires:\t\n`;
+                }
+                // Add/replace [Signature Block] and [Notary Block] in mapping
+                let mapping = keys.map((k, i) => ({key: k, value: values[i]}));
+                function upsertBlock(key, value) {
+                    const idx = mapping.findIndex(pair => pair.key.trim().toLowerCase() === key.toLowerCase());
+                    if (idx !== -1) mapping[idx].value = value;
+                    else mapping.push({key, value});
+                }
+                if (sigBlock) upsertBlock('[Signature Block]', sigBlock);
+                if (notaryBlock) upsertBlock('[Notary Block]', notaryBlock);
                 // Show summary
                 kvSummaryTable.innerHTML = '';
-                keys.forEach((k, i) => {
+                mapping.forEach(pair => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `<td>${k}</td><td>${values[i]}</td>`;
+                    row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
                     kvSummaryTable.appendChild(row);
                 });
+                // Always show [Signature Block] and [Notary Block] rows
+                if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>[Signature Block]</td><td></td>`;
+                    kvSummaryTable.appendChild(row);
+                }
+                if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[notary block]')) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `<td>[Notary Block]</td><td></td>`;
+                    kvSummaryTable.appendChild(row);
+                }
                 kvSummarySection.style.display = 'block';
                 // Store for later
-                kvForm.kvMapping = keys.map((k, i) => ({key: k, value: values[i]}));
+                kvForm.kvMapping = mapping;
+                updatePartyTypeDisplay();
             };
 
             exportJsonBtn.onclick = function() {
@@ -1964,35 +2006,17 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             }
             document.getElementById('replaceDocxBtn').onclick = async function() {
                 docxValidationMsg.style.display = 'none';
-                docxSuccessMsg.style.display = 'none';
-                // Party type required
-                const partyType = document.querySelector('input[name="partyType"]:checked');
-                if (!partyType) {
-                    docxValidationMsg.textContent = 'Please select a Party Type.';
-                    docxValidationMsg.style.display = 'block';
-                    return;
-                }
                 if (!docxInput.files || !docxInput.files[0]) {
                     docxValidationMsg.textContent = 'Please select a DOCX file.';
                     docxValidationMsg.style.display = 'block';
                     return;
                 }
+                // Extract mapping
                 const mapping = kvForm.kvMapping;
-                if (!mapping || mapping.length === 0) {
-                    docxValidationMsg.textContent = 'No key-value mapping found.';
-                    docxValidationMsg.style.display = 'block';
-                    return;
-                }
                 // Prepare form data
                 const formData = new FormData();
                 formData.append('docx', docxInput.files[0]);
                 formData.append('mapping', JSON.stringify(mapping));
-                formData.append('track_changes', trackChanges ? 'true' : 'false');
-                formData.append('party_type', partyType.value);
-                // If document name was parsed from table, use it
-                if (kvForm.parsedDocumentName) {
-                    formData.append('document_name', kvForm.parsedDocumentName);
-                }
                 // Show loading
                 this.disabled = true;
                 this.textContent = 'Processing...';
@@ -2004,9 +2028,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     if (!response.ok) throw new Error('Failed to process DOCX');
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
-                    let downloadName = (kvForm.parsedDocumentName ? kvForm.parsedDocumentName.replace(/\s+/g, '_') : 'lease_population_filled') + '.docx';
-                    docxSuccessMsg.innerHTML = `<a href="${url}" download="${downloadName}" style="color:#00bfff; text-decoration:underline;">Download replaced DOCX file</a> <span style='color:#22c55e;'>&#10003; Success!</span>`;
-                    docxSuccessMsg.style.display = 'block';
+                    let downloadName = 'lease_population_filled.docx';
                     // Optionally, auto-download as well
                     const a = document.createElement('a');
                     a.href = url;
@@ -2111,7 +2133,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
                     return;
                 } else if (val) {
-                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                    partyRadios.forEach(r => { if (r.value === 'Entity') r.checked = true; });
                     return;
                 }
             }
@@ -2123,7 +2145,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
                     return;
                 } else if (val) {
-                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                    partyRadios.forEach(r => { if (r.value === 'Entity') r.checked = true; });
                     return;
                 }
             }
@@ -2134,16 +2156,338 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 // Heuristic: if name contains Inc, LLC, Trust, Corp, Ltd, LP, LLP, select Entity or Trust
                 const entityKeywords = /\b(inc|llc|trust|corp|ltd|lp|llp|plc|company|co\.?|foundation|association|partners|group)\b/i;
                 if (entityKeywords.test(name)) {
-                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                    partyRadios.forEach(r => { if (r.value === 'Entity') r.checked = true; });
                 } else if (/\s/.test(name)) {
                     // If name contains a space and doesn't look like an entity, assume Individual
                     partyRadios.forEach(r => { if (r.value === 'Individual') r.checked = true; });
                 } else {
                     // Default to Entity or Trust if unsure
-                    partyRadios.forEach(r => { if (r.value === 'Entity or Trust') r.checked = true; });
+                    partyRadios.forEach(r => { if (r.value === 'Entity') r.checked = true; });
                 }
             }
         }
+
+        document.getElementById('generateBlockPreviewBtn').onclick = async function() {
+            // Collect relevant fields from mapping
+            const mapping = kvForm.kvMapping || [];
+            function getVal(key) {
+                const found = mapping.find(pair => pair.key.trim().toLowerCase() === key.toLowerCase());
+                return found ? found.value : '';
+            }
+            const grantor_name = getVal('[Grantor Name]');
+            const trust_entity_name = getVal('[Trust/Entity Name]');
+            const name = getVal('[Name]');
+            const title = getVal('[Title]');
+            const state = getVal('[State]');
+            const county = getVal('[County]');
+            const name_of_individuals = getVal('[NAME(S) OF INDIVIDUAL(S)]');
+            const type_of_authority = getVal('[TYPE OF AUTHORITY]');
+            const instrument_for = getVal('[NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR]');
+            // Call backend for preview
+            const response = await fetch('/block_preview', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ grantor_name, trust_entity_name, name, title, state, county, name_of_individuals, type_of_authority, instrument_for })
+            });
+            const data = await response.json();
+            const section = document.getElementById('blockPreviewSection');
+            const content = document.getElementById('blockPreviewContent');
+            if (data && data.preview) {
+                section.style.display = 'block';
+                content.innerHTML = `
+                    <div style='margin-bottom:1.5rem;'><b>Individual Signature Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.individual_signature}</pre></div>
+                    <div style='margin-bottom:1.5rem;'><b>Individual Notary Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.individual_notary}</pre></div>
+                    <div style='margin-bottom:1.5rem;'><b>Entity Signature Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.entity_signature}</pre></div>
+                    <div><b>Entity Notary Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.entity_notary}</pre></div>
+                `;
+            } else {
+                section.style.display = 'block';
+                content.innerHTML = `<span style='color:#ff6b6b;'>Error generating preview.</span>`;
+            }
+        };
+
+        document.getElementById('testPartyTypeBtn').onclick = async function() {
+            docxValidationMsg.style.display = 'none';
+            if (!docxInput.files || !docxInput.files[0]) {
+                docxValidationMsg.textContent = 'Please select a DOCX file.';
+                docxValidationMsg.style.display = 'block';
+                return;
+            }
+            const mapping = kvForm.kvMapping;
+            // Pass detected party type explicitly
+            const partyType = document.getElementById('partyTypeDisplay').getAttribute('data-party-type') || '';
+            const formData = new FormData();
+            formData.append('docx', docxInput.files[0]);
+            formData.append('mapping', JSON.stringify(mapping));
+            formData.append('party_type', partyType);
+            this.disabled = true;
+            this.textContent = 'Processing...';
+            try {
+                const response = await fetch('/test_party_type', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!response.ok) throw new Error('Failed to process DOCX');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                let downloadName = 'party_type_test.docx';
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = downloadName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                docxValidationMsg.textContent = 'Error: ' + err.message;
+                docxValidationMsg.style.display = 'block';
+            } finally {
+                this.disabled = false;
+                this.textContent = 'Test Party Type';
+            }
+        };
+
+        document.getElementById('autofillPartyBlocksBtn').onclick = function() {
+            let mapping = kvForm.kvMapping || [];
+            // Detect party type
+            const grantorTypePair = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantor type]');
+            const grantorType = grantorTypePair ? grantorTypePair.value.trim().toLowerCase() : '';
+            if (!grantorType) {
+                kvValidationMsg.textContent = 'Cannot autofill: [Grantor Type] is missing.';
+                kvValidationMsg.style.display = 'block';
+                return;
+            } else {
+                kvValidationMsg.style.display = 'none';
+            }
+            // Generate block values
+            let sigBlock = '', notaryBlock = '';
+            if (grantorType === 'individual') {
+                sigBlock = `GRANTOR:\n\n[Grantor Name]\n\n\nBy:\t\nName:\t`;
+                notaryBlock = `Acknowledgment Block for Individual\nState of [State]\n\nCounty of [County]\n\nThis record was acknowledged before me on _______________, by [NAME(S) OF INDIVIDUAL(S)].\n\n\n(Signature of Notary Public)\n`;
+            } else if (grantorType === 'entity' || grantorType === 'trust') {
+                sigBlock = `[Trust/Entity Name]\n\nBy:\t\nName:\t\nTitle:\t`;
+                notaryBlock = `Acknowledgment Block for Entity or Trust\nState of [State]\n\nCounty of [County]\n\nThis record was acknowledged before me on _______________, by [NAME(S) OF INDIVIDUAL(S)] as [TYPE OF AUTHORITY] of [NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR].\n\n\n(Signature of Notary Public)\n\nMy Commission Expires:\t\n`;
+            }
+            // Always overwrite or add blocks
+            function upsertBlock(key, value) {
+                const idx = mapping.findIndex(pair => pair.key.trim().toLowerCase() === key.toLowerCase());
+                if (idx !== -1) mapping[idx].value = value;
+                else mapping.push({key, value});
+            }
+            if (sigBlock) upsertBlock('[Signature Block]', sigBlock);
+            if (notaryBlock) upsertBlock('[Notary Block]', notaryBlock);
+            // Update summary table
+            kvSummaryTable.innerHTML = '';
+            mapping.forEach(pair => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
+                kvSummaryTable.appendChild(row);
+            });
+            // Always show [Signature Block] and [Notary Block] rows if missing
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>[Signature Block]</td><td></td>`;
+                kvSummaryTable.appendChild(row);
+            }
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[notary block]')) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>[Notary Block]</td><td></td>`;
+                kvSummaryTable.appendChild(row);
+            }
+            kvForm.kvMapping = mapping;
+            kvSummarySection.style.display = 'block';
+            updatePartyTypeDisplay();
+        };
+
+        // --- Helper Functions ---
+        function updatePartyTypeDisplay() {
+            const mapping = kvForm.kvMapping || [];
+            const grantorType = mapping.find(pair => pair.key.trim().toLowerCase() === '[grantor type]');
+            const display = document.getElementById('partyTypeDisplay');
+            if (grantorType && grantorType.value) {
+                display.textContent = `Detected Party Type: ${grantorType.value.trim()}`;
+                display.setAttribute('data-party-type', grantorType.value.trim());
+            } else {
+                display.textContent = 'Detected Party Type: (not set)';
+                display.setAttribute('data-party-type', '');
+            }
+        }
+
+        async function autofillPartyBlocksInInputs() {
+            // Gather all input rows
+            let rows = Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row'));
+            // Find [Grantor Type] value
+            let grantorType = '';
+            rows.forEach(row => {
+                const keyInput = row.querySelector('.kv-key');
+                const valueInput = row.querySelector('.kv-value');
+                if (keyInput && keyInput.value.trim().toLowerCase() === '[grantor type]') {
+                    grantorType = valueInput.value.trim().toLowerCase();
+                }
+            });
+            if (!grantorType) {
+                kvValidationMsg.textContent = 'Cannot autofill: [Grantor Type] is missing.';
+                kvValidationMsg.style.display = 'block';
+                return false;
+            } else {
+                kvValidationMsg.style.display = 'none';
+            }
+            // Fetch template text from backend
+            let sigBlock = '', notaryBlock = '';
+            try {
+                const response = await fetch('/get_party_block_templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ party_type: grantorType })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                sigBlock = data.signature_block;
+                notaryBlock = data.notary_block;
+            } catch (err) {
+                kvValidationMsg.textContent = 'Error loading templates: ' + err.message;
+                kvValidationMsg.style.display = 'block';
+                return false;
+            }
+            // Helper to upsert or add input row
+            function upsertInputRow(key, value) {
+                let found = false;
+                rows.forEach(row => {
+                    const keyInput = row.querySelector('.kv-key');
+                    const valueInput = row.querySelector('.kv-value');
+                    if (keyInput && keyInput.value.trim().toLowerCase() === key.toLowerCase()) {
+                        valueInput.value = value;
+                        found = true;
+                    }
+                });
+                if (!found) {
+                    // Add new row
+                    const div = document.createElement('div');
+                    div.className = 'kv-pair-row';
+                    div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                    div.innerHTML = `
+                        <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                        <input type="text" class="kv-value" placeholder="Replacement value" value="${value}" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                        <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+                    `;
+                    kvPairsContainer.appendChild(div);
+                    div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
+                }
+            }
+            upsertInputRow('[Signature Block]', sigBlock);
+            upsertInputRow('[Notary Block]', notaryBlock);
+            // Ensure rows are up to date for summary
+            return true;
+        }
+
+        // --- DOM Element References ---
+        const docxInput = document.getElementById('docxFileInput');
+        const docxFileName = document.getElementById('docxFileName');
+        const docxValidationMsg = document.getElementById('docxValidationMsg');
+        const docxSuccessMsg = document.getElementById('docxSuccessMsg');
+        const kvForm = document.getElementById('kvForm');
+        const kvPairsContainer = document.getElementById('kvPairsContainer');
+        const kvSummaryTable = document.getElementById('kvSummaryTable');
+        const kvValidationMsg = document.getElementById('kvValidationMsg');
+        const kvSummarySection = document.getElementById('kvSummarySection');
+
+        // --- Autofill Party Blocks Button (manual trigger) ---
+        document.getElementById('autofillPartyBlocksBtn').onclick = async function() {
+            await autofillPartyBlocksInInputs();
+        };
+
+        // --- Review Replacements Handler ---
+        kvForm.onsubmit = async function(e) {
+            e.preventDefault();
+            // Autofill before review
+            const ok = await autofillPartyBlocksInInputs();
+            if (!ok) return;
+            kvValidationMsg.style.display = 'none';
+            kvSummarySection.style.display = 'none';
+            // Gather pairs
+            const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+            const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+            // Validation
+            let error = '';
+            if (keys.some(k => !k)) error = 'All placeholders must be non-empty.';
+            else if (new Set(keys).size !== keys.length) error = 'Placeholders must be unique.';
+            if (error) {
+                kvValidationMsg.textContent = error;
+                kvValidationMsg.style.display = 'block';
+                return;
+            }
+            // Build mapping
+            let mapping = keys.map((k, i) => ({key: k, value: values[i]}));
+            // Always show [Signature Block] and [Notary Block] rows in summary
+            kvSummaryTable.innerHTML = '';
+            mapping.forEach(pair => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
+                kvSummaryTable.appendChild(row);
+            });
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>[Signature Block]</td><td></td>`;
+                kvSummaryTable.appendChild(row);
+            }
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[notary block]')) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>[Notary Block]</td><td></td>`;
+                kvSummaryTable.appendChild(row);
+            }
+            kvForm.kvMapping = mapping;
+            kvSummarySection.style.display = 'block';
+            updatePartyTypeDisplay();
+        };
+
+        function ensurePartyBlockInputsExist() {
+            // Remove any duplicate, empty, or placeholder rows
+            const rows = Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row'));
+            const seen = {};
+            rows.forEach(row => {
+                const keyInput = row.querySelector('.kv-key');
+                const valueInput = row.querySelector('.kv-value, textarea.kv-value');
+                const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
+                if (!keyInput || !key || key === 'placeholder (e.g., )') {
+                    row.remove();
+                    return;
+                }
+                if ((key === '[signature block]' || key === '[notary block]')) {
+                    if (seen[key]) {
+                        row.remove();
+                    } else {
+                        seen[key] = true;
+                    }
+                }
+            });
+            // Re-check after removals
+            const currentRows = Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row'));
+            function hasRow(key) {
+                return currentRows.some(row => {
+                    const keyInput = row.querySelector('.kv-key');
+                    return keyInput && keyInput.value.trim().toLowerCase() === key.toLowerCase();
+                });
+            }
+            function addRow(key) {
+                const div = document.createElement('div');
+                div.className = 'kv-pair-row';
+                div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                div.innerHTML = `
+                    <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                    <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required></textarea>
+                    <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+                `;
+                kvPairsContainer.appendChild(div);
+                div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
+            }
+            if (!hasRow('[Signature Block]')) addRow('[Signature Block]');
+            if (!hasRow('[Notary Block]')) addRow('[Notary Block]');
+        }
+        // Call on page load
+        ensurePartyBlockInputsExist();
+        // Call after add/remove/edit
+        const observer = new MutationObserver(ensurePartyBlockInputsExist);
+        observer.observe(document.getElementById('kvPairsContainer'), { childList: true, subtree: false });
     </script>
 </body>
 </html> 

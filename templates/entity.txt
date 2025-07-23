@@ -1,0 +1,16 @@
+{trust_entity_name}
+
+By:  
+Name: {name}
+Title: {title}
+
+Acknowledgment Block for Entity or Trust
+STATE OF WASHINGTON
+
+COUNTY OF _________________
+
+This record was acknowledged before me on _______________, 2025 by {name} as {type_of_authority} of {instrument_for}.
+
+(Signature of Notary Public)
+
+My Commission Expires: 
