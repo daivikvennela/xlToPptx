@@ -42,9 +42,9 @@ def get_all_block_previews(grantor_name, trust_entity_name, name, title, state, 
     return preview
 
 def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
-    # Determine party type (robust: use [Grantor Type] if present, fallback to [Grantee Type])
-    party_type = mapping.get('[Grantor Type]', '').strip().lower() or mapping.get('[Grantee Type]', '').strip().lower()
-    is_individual = party_type in ('individual', 'i')
+    # Determine party type
+    grantee_type = mapping.get('[Grantee Type]', '').strip().lower()
+    is_individual = grantee_type == 'individual'
     # Prepare values for template filling
     grantor_name = mapping.get('[Grantor Name]', '')
     trust_entity_name = mapping.get('[Trust/Entity Name]', '')
@@ -94,3 +94,39 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
                 if '[Notary Block]' in paragraph.text:
                     paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
     return doc 
+
+def getSigBlock(ownerType: str, numSignatures: int):
+    # Store the values for future use
+    owner_type = ownerType
+    num_signatures = numSignatures
+    filename = None
+    if owner_type == 'his/her sole property' and num_signatures == 1:
+        filename = 'individual_signature.txt'
+    if owner_type == 'Married Couple' and num_signatures == 2:
+        filename = 'married_couple_signature(2).txt'
+    if owner_type == 'LLC' and num_signatures == 1:
+        filename = 'llc_signature(1).txt'
+    if owner_type == 'LLC' and num_signatures == 2:
+        filename = 'llc_signature(2).txt'
+    if owner_type == 'Corporation' and num_signatures == 1:
+        filename = 'corporation_signature(1).txt'
+    if owner_type == 'Corporation' and num_signatures == 2: 
+        filename = 'corporation_signature(2).txt'
+    if owner_type == 'LP' and num_signatures == 1:    
+        filename = 'lp_signature(1).txt'
+    if owner_type == 'LP' and num_signatures == 2:
+        filename = 'lp_signature(2).txt'
+    if owner_type == 'Sole Owner, married couple' and num_signatures == 2:
+        filename = 'sole_owner_married_couple(2).txt'
+
+    # need to complete logic where further implementation will be added later
+    if filename:
+        import os
+        path = os.path.join('templates', 'sigBlocks', filename)
+        if os.path.exists(path):
+            with open(path, 'r') as f:
+                return f.read()
+        else:
+            return f"Signature block template file '{filename}' not found.\nOwner Type: {owner_type}\nNumber of Signatures: {num_signatures}"
+    # Fallback sample return
+    return f"Signature Block\nOwner Type: {owner_type}\nNumber of Signatures: {num_signatures}\n\n[Signature lines would be generated here based on these values]"
