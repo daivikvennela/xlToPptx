@@ -1,7 +1,6 @@
-GRANTOR:
 
 [Grantor Name]
 
 
-By:	
-Name:	
+By:____________
+Name:____________	

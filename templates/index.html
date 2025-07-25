@@ -1925,6 +1925,29 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             addPair();
             addPairBtn.onclick = function() { addPair(); };
 
+            // Function to get document name from review replacement process
+            function nameFile() {
+                // First priority: Use the document name from review replacement
+                if (kvForm.parsedDocumentName && kvForm.parsedDocumentName.trim()) {
+                    return kvForm.parsedDocumentName.trim();
+                }
+                
+                // Fallback: Look for document name in current mapping
+                const mapping = kvForm.kvMapping || [];
+                const documentNamePair = mapping.find(pair => 
+                    pair.key.trim().toLowerCase() === 'document name' ||
+                    pair.key.trim().toLowerCase() === '[document name]' ||
+                    pair.key.trim().toLowerCase() === 'document_name'
+                );
+                
+                if (documentNamePair && documentNamePair.value.trim()) {
+                    return documentNamePair.value.trim();
+                }
+                
+                // Default fallback
+                return 'lease_population_filled';
+            }
+            
             // Ensure updatePartyTypeDisplay is globally available
             function updatePartyTypeDisplay() {
                 const mapping = kvForm.kvMapping || [];
@@ -1957,34 +1980,9 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 }
                 // Detect party type
                 const grantorType = keys.map(k => k.toLowerCase()).indexOf('[grantor type]') !== -1 ? values[keys.map(k => k.toLowerCase()).indexOf('[grantor type]')].trim().toLowerCase() : '';
-                // Fetch block values from backend
-                let sigBlock = '', notaryBlock = '';
-                if (grantorType) {
-                    try {
-                        const response = await fetch('/get_party_block_templates', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ party_type: grantorType })
-                        });
-                        const data = await response.json();
-                        if (data.error) throw new Error(data.error);
-                        sigBlock = data.signature_block;
-                        notaryBlock = data.notary_block;
-                    } catch (err) {
-                        kvValidationMsg.textContent = 'Error loading templates: ' + err.message;
-                        kvValidationMsg.style.display = 'block';
-                        return;
-                    }
-                }
-                // Add/replace [Signature Block] and [Notary Block] in mapping
+                // DISABLED: Automatic signature and notary block overwriting
+                // Users must manually use the quick fill buttons to populate blocks
                 let mapping = keys.map((k, i) => ({key: k, value: values[i]}));
-                function upsertBlock(key, value) {
-                    const idx = mapping.findIndex(pair => pair.key.trim().toLowerCase() === key.toLowerCase());
-                    if (idx !== -1) mapping[idx].value = value;
-                    else mapping.push({key, value});
-                }
-                if (sigBlock) upsertBlock('[Signature Block]', sigBlock);
-                if (notaryBlock) upsertBlock('[Notary Block]', notaryBlock);
                 // Show summary
                 kvSummaryTable.innerHTML = '';
                 mapping.forEach(pair => {
@@ -2053,12 +2051,19 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     docxValidationMsg.style.display = 'block';
                     return;
                 }
-                // Extract mapping
+                                // Extract mapping
                 const mapping = kvForm.kvMapping;
+                
+                // Get document name using nameFile() function
+                const documentName = nameFile();
+                console.log('Document name from nameFile():', documentName);
+                
                 // Prepare form data
                 const formData = new FormData();
                 formData.append('docx', docxInput.files[0]);
                 formData.append('mapping', JSON.stringify(mapping));
+                formData.append('track_changes', trackChanges ? 'true' : 'false');
+                formData.append('document_name', documentName);
                 // Show loading
                 this.disabled = true;
                 this.textContent = 'Processing...';
@@ -2070,15 +2075,77 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     if (!response.ok) throw new Error('Failed to process DOCX');
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
-                    let downloadName = 'lease_population_filled.docx';
-                    // Optionally, auto-download as well
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = downloadName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
+                    
+                    // Create initial safe filename
+                    const initialSafeName = documentName.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    const initialFileName = initialSafeName + '.docx';
+                    
+                    console.log('Initial filename:', initialFileName);
+                    
+                    // Show filename to user before download with editable field
+                    const downloadModal = document.createElement('div');
+                    downloadModal.style = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; display:flex; align-items:center; justify-content:center;';
+                    downloadModal.innerHTML = `
+                        <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:450px; max-width:90vw; text-align:center; box-shadow:0 8px 32px #0008;">
+                            <h3 style="color:#00bfff; margin-bottom:1rem;">File Ready for Download</h3>
+                            <p style="margin-bottom:1.5rem; font-size:1.1rem;">Your document has been processed successfully!</p>
+                            <div style="background:rgba(26,26,46,0.8); padding:1rem; border-radius:8px; border:1px solid #00bfff; margin-bottom:1.5rem;">
+                                <label for="filenameInput" style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Filename:</label>
+                                <input type="text" id="filenameInput" value="${initialFileName}" style="width:100%; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; font-size:0.9rem; text-align:center;">
+                                <div style="color:#888; font-size:0.8rem; margin-top:0.5rem;">You can edit the filename above</div>
+                            </div>
+                            <button id="confirmDownloadBtn" class="submit-btn" style="margin-right:1rem;">Download Now</button>
+                            <button id="cancelDownloadBtn" class="secondary-btn">Cancel</button>
+                        </div>
+                    `;
+                    document.body.appendChild(downloadModal);
+                    
+                    // Handle download confirmation
+                    document.getElementById('confirmDownloadBtn').onclick = function() {
+                        // Get the edited filename from the input field
+                        const filenameInput = document.getElementById('filenameInput');
+                        let finalFileName = filenameInput.value.trim();
+                        
+                        // Validate and clean the filename
+                        if (!finalFileName) {
+                            finalFileName = initialFileName;
+                        }
+                        
+                        // Ensure it ends with .docx
+                        if (!finalFileName.toLowerCase().endsWith('.docx')) {
+                            finalFileName += '.docx';
+                        }
+                        
+                        // Clean invalid characters
+                        finalFileName = finalFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+                        
+                        console.log('Final download filename:', finalFileName);
+                        
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = finalFileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(downloadModal);
+                        
+                        // Show success message in main interface
+                        docxValidationMsg.style.color = '#00ff88';
+                        docxValidationMsg.textContent = `✅ File downloaded successfully as: ${finalFileName}`;
+                        docxValidationMsg.style.display = 'block';
+                        
+                        // Clear success message after 5 seconds
+                        setTimeout(() => {
+                            docxValidationMsg.style.display = 'none';
+                        }, 5000);
+                    };
+                    
+                    // Handle cancel
+                    document.getElementById('cancelDownloadBtn').onclick = function() {
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(downloadModal);
+                    };
                 } catch (err) {
                     docxValidationMsg.textContent = 'Error: ' + err.message;
                     docxValidationMsg.style.display = 'block';
@@ -2258,10 +2325,15 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             const mapping = kvForm.kvMapping;
             // Pass detected party type explicitly
             const partyType = document.getElementById('partyTypeDisplay').getAttribute('data-party-type') || '';
+            // Get document name using nameFile() function for test file
+            const baseDocumentName = nameFile();
+            const testDocumentName = baseDocumentName + '_test';
+            
             const formData = new FormData();
             formData.append('docx', docxInput.files[0]);
             formData.append('mapping', JSON.stringify(mapping));
             formData.append('party_type', partyType);
+            formData.append('document_name', testDocumentName);
             this.disabled = true;
             this.textContent = 'Processing...';
             try {
@@ -2272,14 +2344,77 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 if (!response.ok) throw new Error('Failed to process DOCX');
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
-                let downloadName = 'party_type_test.docx';
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = downloadName;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
+                
+                // Create initial safe filename for test file
+                const initialSafeTestName = testDocumentName.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const initialTestFileName = initialSafeTestName + '.docx';
+                
+                console.log('Initial test filename:', initialTestFileName);
+                
+                // Show filename to user before download with editable field
+                const testDownloadModal = document.createElement('div');
+                testDownloadModal.style = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; display:flex; align-items:center; justify-content:center;';
+                testDownloadModal.innerHTML = `
+                    <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:450px; max-width:90vw; text-align:center; box-shadow:0 8px 32px #0008;">
+                        <h3 style="color:#00bfff; margin-bottom:1rem;">Test File Ready for Download</h3>
+                        <p style="margin-bottom:1.5rem; font-size:1.1rem;">Your test document has been processed successfully!</p>
+                        <div style="background:rgba(26,26,46,0.8); padding:1rem; border-radius:8px; border:1px solid #00bfff; margin-bottom:1.5rem;">
+                            <label for="testFilenameInput" style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Filename:</label>
+                            <input type="text" id="testFilenameInput" value="${initialTestFileName}" style="width:100%; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; font-size:0.9rem; text-align:center;">
+                            <div style="color:#888; font-size:0.8rem; margin-top:0.5rem;">You can edit the filename above</div>
+                        </div>
+                        <button id="confirmTestDownloadBtn" class="submit-btn" style="margin-right:1rem;">Download Now</button>
+                        <button id="cancelTestDownloadBtn" class="secondary-btn">Cancel</button>
+                    </div>
+                `;
+                document.body.appendChild(testDownloadModal);
+                
+                // Handle test download confirmation
+                document.getElementById('confirmTestDownloadBtn').onclick = function() {
+                    // Get the edited filename from the input field
+                    const testFilenameInput = document.getElementById('testFilenameInput');
+                    let finalTestFileName = testFilenameInput.value.trim();
+                    
+                    // Validate and clean the filename
+                    if (!finalTestFileName) {
+                        finalTestFileName = initialTestFileName;
+                    }
+                    
+                    // Ensure it ends with .docx
+                    if (!finalTestFileName.toLowerCase().endsWith('.docx')) {
+                        finalTestFileName += '.docx';
+                    }
+                    
+                    // Clean invalid characters
+                    finalTestFileName = finalTestFileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+                    
+                    console.log('Final test download filename:', finalTestFileName);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = finalTestFileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(testDownloadModal);
+                    
+                    // Show success message in main interface
+                    docxValidationMsg.style.color = '#00ff88';
+                    docxValidationMsg.textContent = `✅ Test file downloaded successfully as: ${finalTestFileName}`;
+                    docxValidationMsg.style.display = 'block';
+                    
+                    // Clear success message after 5 seconds
+                    setTimeout(() => {
+                        docxValidationMsg.style.display = 'none';
+                    }, 5000);
+                };
+                
+                // Handle test cancel
+                document.getElementById('cancelTestDownloadBtn').onclick = function() {
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(testDownloadModal);
+                };
             } catch (err) {
                 docxValidationMsg.textContent = 'Error: ' + err.message;
                 docxValidationMsg.style.display = 'block';
@@ -2289,6 +2424,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             }
         };
 
+        // DISABLED: Autofill party blocks function to prevent overwriting signature and notary blocks
+        /*
         document.getElementById('autofillPartyBlocksBtn').onclick = function() {
             let mapping = kvForm.kvMapping || [];
             // Detect party type
@@ -2310,14 +2447,29 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 sigBlock = `[Trust/Entity Name]\n\nBy:\t\nName:\t\nTitle:\t`;
                 notaryBlock = `Acknowledgment Block for Entity or Trust\nState of [State]\n\nCounty of [County]\n\nThis record was acknowledged before me on _______________, by [NAME(S) OF INDIVIDUAL(S)] as [TYPE OF AUTHORITY] of [NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR].\n\n\n(Signature of Notary Public)\n\nMy Commission Expires:\t\n`;
             }
-            // Always overwrite or add blocks
-            function upsertBlock(key, value) {
+            // Only overwrite if blocks are empty
+            function upsertBlockIfEmpty(key, value) {
                 const idx = mapping.findIndex(pair => pair.key.trim().toLowerCase() === key.toLowerCase());
-                if (idx !== -1) mapping[idx].value = value;
-                else mapping.push({key, value});
+                if (idx !== -1) {
+                    // Only overwrite if the current value is completely empty or contains obvious error messages
+                    const currentValue = mapping[idx].value.trim();
+                    const isEmpty = !currentValue || 
+                                  currentValue === '' || 
+                                  currentValue === '(Sample will appear here)' ||
+                                  currentValue === '(No content)' ||
+                                  currentValue === 'Error loading signature block.' ||
+                                  currentValue === 'Error loading notary block.' ||
+                                  currentValue === 'Notary block template file \'notrary.txt\' not found.';
+                    if (isEmpty) {
+                        mapping[idx].value = value;
+                    }
+                } else {
+                    // If the key doesn't exist, add it
+                    mapping.push({key, value});
+                }
             }
-            if (sigBlock) upsertBlock('[Signature Block]', sigBlock);
-            if (notaryBlock) upsertBlock('[Notary Block]', notaryBlock);
+            if (sigBlock) upsertBlockIfEmpty('[Signature Block]', sigBlock);
+            if (notaryBlock) upsertBlockIfEmpty('[Notary Block]', notaryBlock);
             // Update summary table
             kvSummaryTable.innerHTML = '';
             mapping.forEach(pair => {
@@ -2340,6 +2492,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             kvSummarySection.style.display = 'block';
             updatePartyTypeDisplay();
         };
+        */
 
         // --- Helper Functions ---
         function updatePartyTypeDisplay() {
@@ -2355,6 +2508,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             }
         }
 
+        // DISABLED: Autofill party blocks in inputs function to prevent overwriting signature and notary blocks
+        /*
         async function autofillPartyBlocksInInputs() {
             // Gather all input rows
             let rows = Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row'));
@@ -2391,14 +2546,25 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 kvValidationMsg.style.display = 'block';
                 return false;
             }
-            // Helper to upsert or add input row
-            function upsertInputRow(key, value) {
+            // Helper to upsert or add input row ONLY if empty
+            function upsertInputRowIfEmpty(key, value) {
                 let found = false;
                 rows.forEach(row => {
                     const keyInput = row.querySelector('.kv-key');
                     const valueInput = row.querySelector('.kv-value');
                     if (keyInput && keyInput.value.trim().toLowerCase() === key.toLowerCase()) {
-                        valueInput.value = value;
+                        // Only overwrite if the current value is completely empty or contains obvious error messages
+                        const currentValue = valueInput.value.trim();
+                        const isEmpty = !currentValue || 
+                                      currentValue === '' || 
+                                      currentValue === '(Sample will appear here)' ||
+                                      currentValue === '(No content)' ||
+                                      currentValue === 'Error loading signature block.' ||
+                                      currentValue === 'Error loading notary block.' ||
+                                      currentValue === 'Notary block template file \'notrary.txt\' not found.';
+                        if (isEmpty) {
+                            valueInput.value = value;
+                        }
                         found = true;
                     }
                 });
@@ -2416,11 +2582,12 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
                 }
             }
-            upsertInputRow('[Signature Block]', sigBlock);
-            upsertInputRow('[Notary Block]', notaryBlock);
+            upsertInputRowIfEmpty('[Signature Block]', sigBlock);
+            upsertInputRowIfEmpty('[Notary Block]', notaryBlock);
             // Ensure rows are up to date for summary
             return true;
         }
+        */
 
         // --- DOM Element References ---
         const docxInput = document.getElementById('docxFileInput');
@@ -2441,9 +2608,9 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // --- Review Replacements Handler ---
         kvForm.onsubmit = async function(e) {
             e.preventDefault();
-            // Autofill before review
-            const ok = await autofillPartyBlocksInInputs();
-            if (!ok) return;
+            // Autofill before review - DISABLED to prevent overwriting signature and notary blocks
+            // const ok = await autofillPartyBlocksInInputs();
+            // if (!ok) return;
             kvValidationMsg.style.display = 'none';
             kvSummarySection.style.display = 'none';
             // Gather pairs
@@ -2607,13 +2774,24 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     // Copy preview text to input fields
                     const sigVal = document.getElementById('sigBlockPreview').value;
                     const notaryVal = document.getElementById('notaryBlockPreview').value;
-                    function upsertInputRow(key, value) {
+                    function upsertInputRowIfEmpty(key, value) {
                         let found = false;
                         Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
                             const keyInput = row.querySelector('.kv-key');
                             const valueInput = row.querySelector('.kv-value, textarea.kv-value');
                             if (keyInput && keyInput.value.trim().toLowerCase() === key.toLowerCase()) {
-                                valueInput.value = value;
+                                // Only overwrite if the current value is completely empty or contains obvious error messages
+                                const currentValue = valueInput.value.trim();
+                                const isEmpty = !currentValue || 
+                                              currentValue === '' || 
+                                              currentValue === '(Sample will appear here)' ||
+                                              currentValue === '(No content)' ||
+                                              currentValue === 'Error loading signature block.' ||
+                                              currentValue === 'Error loading notary block.' ||
+                                              currentValue === 'Notary block template file \'notrary.txt\' not found.';
+                                if (isEmpty) {
+                                    valueInput.value = value;
+                                }
                                 found = true;
                             }
                         });
@@ -2631,8 +2809,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                             div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
                         }
                     }
-                    upsertInputRow('[Signature Block]', sigVal);
-                    upsertInputRow('[Notary Block]', notaryVal);
+                    upsertInputRowIfEmpty('[Signature Block]', sigVal);
+                    upsertInputRowIfEmpty('[Notary Block]', notaryVal);
                     previewSection.style.display = 'none';
                 };
             };
@@ -2661,6 +2839,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
 
         // After the line that adds the Fill Signature and Notary Block button:
         document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;">Quick Fill Signature Block</button>');
+        document.getElementById('quickFillSigBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillNotaryBlockBtn" style="margin-left:1rem;">Quick Fill Notary Block</button>');
 
         // Add modal for confirmation (reuse or create if not present)
         if (!document.getElementById('quickSigBlockModal')) {
@@ -2680,24 +2859,49 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
           document.body.appendChild(modal);
         }
 
+        // Add modal for notary block confirmation
+        if (!document.getElementById('quickNotaryBlockModal')) {
+          const modal = document.createElement('div');
+          modal.id = 'quickNotaryBlockModal';
+          modal.style = 'display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;';
+          modal.innerHTML = `
+            <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:320px; max-width:90vw; position:relative; box-shadow:0 8px 32px #0008;">
+              <button id="closeQuickNotaryBlockModal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
+              <h2 style="color:#00bfff; margin-bottom:1rem;">Notary Block Confirmation</h2>
+              <div id="quickNotaryBlockModalContent" style="font-size:1.2rem; margin-bottom:1.5rem;"></div>
+              <label for="quickNotaryBlockPreview" style="color:#b5e0ff; font-weight:600;">Notary Block Preview</label><br>
+              <textarea id="quickNotaryBlockPreview" style="width:100%; min-height:6em; margin-top:0.5em; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">(Sample will appear here)</textarea>
+              <button id="confirmQuickNotaryBlockBtn" class="submit-btn" style="margin-top:1rem;">Use This Block</button>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
+
         // Add event handler for the new button
         const quickFillBtn = document.getElementById('quickFillSigBlockBtn');
         quickFillBtn.onclick = async function() {
-          // Extract [Owner Type] and [#ofSigs] from kvPairsContainer
+          // Extract [Owner Type] and [Number of Grantor Signatures] from kvPairsContainer
           let ownerType = '';
           let numSigs = '';
           Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
             const keyInput = row.querySelector('.kv-key');
             const valueInput = row.querySelector('.kv-value, textarea.kv-value');
-            if (keyInput && keyInput.value.trim().toLowerCase() === '[owner type]') {
+            const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
+            
+            // Try different variations of Owner Type
+            if (key === '[owner type]' || key === 'owner type' || key === 'owner_type') {
               ownerType = valueInput.value.trim();
             }
-            if (keyInput && (keyInput.value.trim().toLowerCase() === '[#ofsigs]' || keyInput.value.trim().toLowerCase() === '[number of signatures]')) {
+            // Try different variations of Number of Grantor Signatures
+            if (key === '[number of grantor signatures]' || key === 'number of grantor signatures' || key === 'number_of_grantor_signatures') {
               numSigs = valueInput.value.trim();
             }
           });
+          console.log('Found Owner Type:', ownerType);
+          console.log('Found Number of Signatures:', numSigs);
+          
           if (!ownerType || !numSigs) {
-            alert('Both [Owner Type] and [#ofSigs] must be present in the table.');
+            alert('Both [Owner Type] and [Number of Grantor Signatures] must be present in the table.\n\nFound Owner Type: "' + ownerType + '"\nFound Number of Signatures: "' + numSigs + '"\n\nPlease check your field names.');
             return;
           }
           // Show modal for confirmation
@@ -2742,6 +2946,65 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
               div.innerHTML = `
                 <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="[Signature Block]" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
                 <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required>${sigBlockVal}</textarea>
+                <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+              `;
+              document.getElementById('kvPairsContainer').appendChild(div);
+              div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
+            }
+            modal.style.display = 'none';
+          };
+        };
+
+        // Add event handler for the notary block button
+        const quickFillNotaryBtn = document.getElementById('quickFillNotaryBlockBtn');
+        quickFillNotaryBtn.onclick = async function() {
+          // Show modal for confirmation
+          const modal = document.getElementById('quickNotaryBlockModal');
+          const modalContent = document.getElementById('quickNotaryBlockModalContent');
+          modalContent.innerHTML = `<b>Loading notary block template...</b>`;
+          document.getElementById('quickNotaryBlockPreview').value = '(Loading...)';
+          modal.style.display = 'flex';
+          
+          // Fetch preview from backend
+          try {
+            const response = await fetch('/get_notary_block', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            const data = await response.json();
+            document.getElementById('quickNotaryBlockPreview').value = data.notary_block || '(No content)';
+            modalContent.innerHTML = `<b>Notary Block Template</b><br>This template will be used for the notary block.`;
+          } catch (err) {
+            document.getElementById('quickNotaryBlockPreview').value = 'Error loading notary block.';
+            modalContent.innerHTML = `<b>Error:</b> Could not load notary block template.`;
+          }
+          
+          // Modal close handler
+          document.getElementById('closeQuickNotaryBlockModal').onclick = function() {
+            modal.style.display = 'none';
+          };
+          
+          // Confirm handler: copy to [Notary Block] in kvPairsContainer
+          document.getElementById('confirmQuickNotaryBlockBtn').onclick = function() {
+            const notaryBlockVal = document.getElementById('quickNotaryBlockPreview').value;
+            let found = false;
+            Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
+              const keyInput = row.querySelector('.kv-key');
+              const valueInput = row.querySelector('.kv-value, textarea.kv-value');
+              if (keyInput && keyInput.value.trim().toLowerCase() === '[notary block]') {
+                valueInput.value = notaryBlockVal;
+                found = true;
+              }
+            });
+            if (!found) {
+              // Add new row for [Notary Block]
+              const div = document.createElement('div');
+              div.className = 'kv-pair-row';
+              div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+              div.innerHTML = `
+                <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="[Notary Block]" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required>${notaryBlockVal}</textarea>
                 <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
               `;
               document.getElementById('kvPairsContainer').appendChild(div);

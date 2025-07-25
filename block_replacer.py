@@ -95,6 +95,24 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
                     paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
     return doc 
 
+def getNotaryBlock():
+    """Get hardcoded notary block template"""
+    return """STATE OF [State] SS: 
+
+COUNTY OF [County] 
+
+On _______________________, before me, __________________________________,  
+
+Notary Public, personally appeared _______________________________________, who proved to me on the basis of satisfactory evidence to be the person(s) whose name(s) is/are subscribed to the within instrument and acknowledged to me that he/she/they executed the same in his/her/their authorized capacity(ies).] 
+
+[STAMP]		________________________________ 
+
+Title of Office: Notary Public 
+
+Printed Name: ____________________ 
+
+My Commission Expires: ___________"""
+
 def getSigBlock(ownerType: str, numSignatures: int):
     # Store the values for future use
     owner_type = ownerType

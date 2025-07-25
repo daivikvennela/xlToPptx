@@ -27,7 +27,7 @@ from block_replacer import get_all_block_previews
 from block_replacer import replace_signature_and_notary_blocks
 from docx import Document
 from block_replacer import generate_signature_block, generate_notary_block
-from block_replacer import getSigBlock
+from block_replacer import getSigBlock, getNotaryBlock
 
 # --- Template Version 2: Dynamic PPTX Slide Customization ---
 try:
@@ -952,6 +952,8 @@ def lease_population_replace():
     try:
         mapping_raw = json.loads(mapping_json)
         mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
+        if track_changes:
+            mapping = {k: f"NEW:{v}" for k, v in mapping.items()}
     except Exception as e:
         return jsonify({'error': 'Invalid mapping format'}), 400
     # --- Robust Party Type Detection ---
@@ -960,6 +962,11 @@ def lease_population_replace():
     # --- Robust Placeholder Replacement ---
     try:
         doc = Document(docx_file)
+        # Ensure modern Word compatibility
+        if hasattr(doc.core_properties, 'version'):
+            doc.core_properties.version = '16.0'
+        if hasattr(doc.core_properties, 'last_modified_by'):
+            doc.core_properties.last_modified_by = 'Document Processor'
         def replace_in_runs(runs, mapping):
             full_text = ''.join(run.text for run in runs)
             for key, value in mapping.items():
@@ -1004,9 +1011,11 @@ def lease_population_replace():
         print(f"[DEBUG] Placeholders replaced: {list(mapping.keys())}")
         from io import BytesIO
         out_stream = BytesIO()
-        doc.save(out_stream)
+        # Save in modern DOCX format to ensure compatibility
+        doc.save(out_stream, 'docx')
         out_stream.seek(0)
         safe_name = document_name.replace(' ', '_').replace('/', '_')
+        print(f"[DEBUG] lease_population_replace: Download filename will be: {safe_name}.docx (from document_name: {document_name})")
         return send_file(out_stream, as_attachment=True, download_name=f'{safe_name}.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as e:
         import traceback
@@ -1022,6 +1031,7 @@ def test_party_type():
     docx_file = request.files['docx']
     mapping_json = request.form['mapping']
     party_type = request.form.get('party_type', '').strip()
+    document_name = request.form.get('document_name', 'party_type_test')
     try:
         mapping_raw = json.loads(mapping_json)
         mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
@@ -1030,6 +1040,11 @@ def test_party_type():
         return jsonify({'error': 'Invalid mapping format'}), 400
     try:
         doc = Document(docx_file)
+        # Ensure modern Word compatibility
+        if hasattr(doc.core_properties, 'version'):
+            doc.core_properties.version = '16.0'
+        if hasattr(doc.core_properties, 'last_modified_by'):
+            doc.core_properties.last_modified_by = 'Document Processor'
         # Prepare values for template filling
         grantor_name = mapping.get('[Grantor Name]', '')
         trust_entity_name = mapping.get('[Trust/Entity Name]', '')
@@ -1081,9 +1096,12 @@ def test_party_type():
                     process_paragraph(paragraph)
         from io import BytesIO
         out_stream = BytesIO()
-        doc.save(out_stream)
+        # Save in modern DOCX format to ensure compatibility
+        doc.save(out_stream, 'docx')
         out_stream.seek(0)
-        return send_file(out_stream, as_attachment=True, download_name='party_type_test.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        safe_name = document_name.replace(' ', '_').replace('/', '_')
+        print(f"[DEBUG] test_party_type: Download filename will be: {safe_name}.docx (from document_name: {document_name})")
+        return send_file(out_stream, as_attachment=True, download_name=f'{safe_name}.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
@@ -1790,6 +1808,11 @@ def get_signature_block():
         num_signatures = 1
     content = getSigBlock(owner_type, num_signatures)
     return jsonify({'signature_block': content})
+
+@app.route('/get_notary_block', methods=['POST'])
+def get_notary_block():
+    content = getNotaryBlock()
+    return jsonify({'notary_block': content})
 
 if __name__ == '__main__':
     app.run(debug=True) 

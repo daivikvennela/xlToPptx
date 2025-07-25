@@ -1,17 +1,5 @@
 [Trust/Entity Name]
 
-By:	 
-Name:	 
-Title:	
-
-
-
-
-
-
-
-
-
-
-
-
+By:____________
+Name:____________	 
+Title:____________	
