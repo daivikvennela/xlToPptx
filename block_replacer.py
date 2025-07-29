@@ -95,6 +95,53 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
                     paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
     return doc 
 
+def build_exhibit_string(parcels, img_b64, gen_desc_path, portion_desc_path, normal_desc_path):
+    """
+    Build Exhibit A string from parcels, image, and description templates.
+    
+    Args:
+        parcels: List of Parcel objects with parcelNumber and isPortion properties
+        img_b64: Base64 encoded image string
+        gen_desc_path: Path to general description template file
+        portion_desc_path: Path to portion description template file
+        normal_desc_path: Path to normal parcel description template file
+    
+    Returns:
+        Complete exhibit string ready for document insertion
+    """
+    try:
+        # Start with general description
+        with open(gen_desc_path, 'r') as f:
+            exhibit = f.read() + '\n\n'
+        
+        # Add image if provided
+        if img_b64:
+            exhibit += f'[IMAGE:{img_b64}]\n\n'
+        
+        # Load templates
+        with open(portion_desc_path, 'r') as f:
+            portion_tpl = f.read()
+        with open(normal_desc_path, 'r') as f:
+            normal_tpl = f.read()
+        
+        # Process each parcel
+        for parcel in parcels:
+            parcel_num = parcel.get('parcelNumber', '')
+            is_portion = parcel.get('isPortion', False)
+            
+            if is_portion:
+                # Use portion template
+                parcel_text = portion_tpl.replace('[i]', str(parcel_num))
+            else:
+                # Use normal parcel template
+                parcel_text = normal_tpl.replace('[i]', str(parcel_num))
+            
+            exhibit += parcel_text + '\n\n'
+        
+        return exhibit
+    except Exception as e:
+        return f"Error building exhibit string: {str(e)}"
+
 def getNotaryBlock():
     """Get hardcoded notary block template"""
     return """STATE OF [State] SS: 

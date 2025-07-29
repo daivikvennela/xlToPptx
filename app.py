@@ -1814,5 +1814,56 @@ def get_notary_block():
     content = getNotaryBlock()
     return jsonify({'notary_block': content})
 
+@app.route('/gen_exhibit_a', methods=['POST'])
+def gen_exhibit_a():
+    """
+    Generate Exhibit A string from parcels, image, and description templates.
+    """
+    try:
+        # Get parcels data
+        parcels_json = request.form.get('parcels', '[]')
+        parcels = json.loads(parcels_json)
+        
+        # Get image file if provided
+        image_file = request.files.get('image')
+        img_b64 = None
+        if image_file:
+            import base64
+            img_b64 = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Define template file paths
+        gen_desc_path = os.path.join('templates', 'exhibit', 'general_description.txt')
+        portion_desc_path = os.path.join('templates', 'exhibit', 'portion_description.txt')
+        normal_desc_path = os.path.join('templates', 'exhibit', 'normal_portion.txt')
+        
+        # Check if template files exist, create defaults if not
+        if not os.path.exists(gen_desc_path):
+            os.makedirs(os.path.dirname(gen_desc_path), exist_ok=True)
+            with open(gen_desc_path, 'w') as f:
+                f.write("EXHIBIT A\n\nGeneral Description of Property\n\nThis exhibit contains the legal description of the property subject to this agreement.")
+        
+        if not os.path.exists(portion_desc_path):
+            os.makedirs(os.path.dirname(portion_desc_path), exist_ok=True)
+            with open(portion_desc_path, 'w') as f:
+                f.write("Portion [i]:\n\nThis portion of the property is described as follows...")
+        
+        if not os.path.exists(normal_desc_path):
+            os.makedirs(os.path.dirname(normal_desc_path), exist_ok=True)
+            with open(normal_desc_path, 'w') as f:
+                f.write("Parcel [i]:\n\nA parcel of the property described as follows...")
+        
+        # Import and use the helper function
+        from block_replacer import build_exhibit_string
+        exhibit_string = build_exhibit_string(parcels, img_b64, gen_desc_path, portion_desc_path, normal_desc_path)
+        
+        return jsonify({'exhibit_string': exhibit_string})
+        
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in gen_exhibit_a: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to generate exhibit string: {str(e)}', 'traceback': error_traceback}), 500
+
 if __name__ == '__main__':
     app.run(debug=True) 

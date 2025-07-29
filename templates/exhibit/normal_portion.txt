@@ -1,0 +1,7 @@
+PARCEL [i]:
+
+A parcel of the property described as follows:
+
+That certain parcel of [Legal Description] containing approximately [Acres] acres, more or less, as shown on the survey map attached hereto as Exhibit A-[i].
+
+Said parcel is subject to all existing easements, restrictions, and encumbrances of record.
