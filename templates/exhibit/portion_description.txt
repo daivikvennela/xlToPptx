@@ -1,7 +1,8 @@
-PORTION [i]:
+
+Parcel [i]: PORTION
 
 A portion of the property described as follows:
 
 That certain portion of [Legal Description] containing approximately [Acres] acres, more or less, as shown on the survey map attached hereto as Exhibit A-[i].
 
-Said portion is subject to all existing easements, restrictions, and encumbrances of record. 
+Said portion is subject to all existing easements, restrictions, and encumbrances of record.  

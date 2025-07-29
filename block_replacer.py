@@ -2,11 +2,162 @@
 
 import os
 from docx import Document
+from docx.shared import Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from PIL import Image
+import io
+import base64
 
 def load_block_template(filename):
     path = os.path.join('templates', 'blocks', filename)
     with open(path, 'r') as f:
         return f.read()
+
+def embedImage(doc: Document, image_data: str, placeholder: str = '[EXHIBIT_A_IMAGE_1]'):
+    """
+    Embed an image into a DOCX document at the location of a placeholder.
+    
+    Args:
+        doc: The DOCX document object
+        image_data: Base64 encoded image string
+        placeholder: The placeholder text to replace with the image
+    
+    Returns:
+        bool: True if image was successfully embedded, False otherwise
+    """
+    try:
+        print(f"[DEBUG] Starting image embedding for placeholder: {placeholder}")
+        
+        # Validate input
+        if not image_data or not isinstance(image_data, str):
+            print("[ERROR] Invalid image data: must be non-empty string")
+            return False
+        
+        # Decode base64 image data
+        try:
+            image_bytes = base64.b64decode(image_data)
+            print(f"[DEBUG] Decoded base64 image data, size: {len(image_bytes)} bytes")
+        except Exception as e:
+            print(f"[ERROR] Failed to decode base64 image data: {str(e)}")
+            return False
+        
+        # Validate minimum size
+        if len(image_bytes) < 8:
+            print("[ERROR] Image data too small to be valid")
+            return False
+        
+        # Validate PNG header
+        if not image_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+            print("[ERROR] Invalid PNG header")
+            return False
+        
+        # Open and validate image with Pillow
+        try:
+            image = Image.open(io.BytesIO(image_bytes))
+            print(f"[DEBUG] Opened image: format={image.format}, size={image.size}, mode={image.mode}")
+            
+            # Convert to RGB if necessary (for PNG with transparency)
+            if image.mode in ('RGBA', 'LA', 'P'):
+                # Create white background for transparent images
+                background = Image.new('RGB', image.size, (255, 255, 255))
+                if image.mode == 'P':
+                    image = image.convert('RGBA')
+                background.paste(image, mask=image.split()[-1] if image.mode == 'RGBA' else None)
+                image = background
+                print("[DEBUG] Converted transparent image to RGB with white background")
+            elif image.mode != 'RGB':
+                image = image.convert('RGB')
+                print(f"[DEBUG] Converted image from {image.mode} to RGB")
+        except Exception as e:
+            print(f"[ERROR] Failed to process image with Pillow: {str(e)}")
+            print(f"[DEBUG] Image bytes size: {len(image_bytes)}")
+            print(f"[DEBUG] First 100 bytes: {image_bytes[:100]}")
+            return False
+        
+        # Resize image to reasonable dimensions (max width 6 inches)
+        max_width_inches = 6.0
+        max_width_pixels = int(max_width_inches * 96)  # 96 DPI for screen
+        
+        original_size = image.size
+        if image.width > max_width_pixels:
+            ratio = max_width_pixels / image.width
+            new_width = max_width_pixels
+            new_height = int(image.height * ratio)
+            image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            print(f"[DEBUG] Resized image from {original_size} to {image.size}")
+        
+        # Convert back to bytes
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='PNG', optimize=True)
+        img_byte_arr = img_byte_arr.getvalue()
+        print(f"[DEBUG] Converted image to PNG format, size: {len(img_byte_arr)} bytes")
+        
+        # Find and replace placeholder in document
+        found_placeholder = False
+        placeholder_count = 0
+        
+        def process_paragraph(paragraph):
+            nonlocal found_placeholder, placeholder_count
+            if placeholder in paragraph.text:
+                placeholder_count += 1
+                print(f"[DEBUG] Found placeholder '{placeholder}' in paragraph #{placeholder_count}")
+                
+                # Clear the paragraph and add centered image
+                paragraph.clear()
+                run = paragraph.add_run()
+                
+                # Calculate image width in inches
+                width_inches = min(image.width / 96, max_width_inches)
+                
+                # Add image to the run
+                run.add_picture(io.BytesIO(img_byte_arr), width=Inches(width_inches))
+                paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                found_placeholder = True
+                print(f"[DEBUG] Successfully embedded image in paragraph #{placeholder_count}")
+        
+        def process_table(table):
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        process_paragraph(paragraph)
+        
+        def process_block(block):
+            for paragraph in block.paragraphs:
+                process_paragraph(paragraph)
+            for table in getattr(block, 'tables', []):
+                process_table(table)
+        
+        # Process main document
+        for paragraph in doc.paragraphs:
+            process_paragraph(paragraph)
+        
+        for table in doc.tables:
+            process_table(table)
+        
+        # Process headers and footers
+        for section in doc.sections:
+            process_block(section.header)
+            process_block(section.footer)
+        
+        # Process footnotes
+        if hasattr(doc, 'part') and hasattr(doc.part, 'footnotes'):
+            for footnote in doc.part.footnotes.part.footnotes:
+                for paragraph in footnote.paragraphs:
+                    process_paragraph(paragraph)
+        
+        if not found_placeholder:
+            print(f"[WARNING] Placeholder '{placeholder}' not found in document")
+            print(f"[DEBUG] Document has {len(doc.paragraphs)} paragraphs")
+            return False
+        
+        print(f"[DEBUG] Image embedding completed successfully. Found {placeholder_count} placeholder(s)")
+        return True
+        
+    except Exception as e:
+        print(f"[ERROR] Critical error in image embedding: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 def generate_signature_block(grantor_name, trust_entity_name=None, name=None, title=None, block_type='individual', state=None, county=None, name_of_individuals=None, type_of_authority=None, instrument_for=None):
     if block_type == 'individual':
@@ -95,52 +246,101 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
                     paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
     return doc 
 
-def build_exhibit_string(parcels, img_b64, gen_desc_path, portion_desc_path, normal_desc_path):
+def build_exhibit_string(parcels):
     """
-    Build Exhibit A string from parcels, image, and description templates.
+    Build the Exhibit A text string from templates and parcel data with dynamic template selection.
     
     Args:
-        parcels: List of Parcel objects with parcelNumber and isPortion properties
-        img_b64: Base64 encoded image string
-        gen_desc_path: Path to general description template file
-        portion_desc_path: Path to portion description template file
-        normal_desc_path: Path to normal parcel description template file
+        parcels: List of parcel objects with parcelNumber, isPortion, and templateType properties
     
     Returns:
-        Complete exhibit string ready for document insertion
+        str: The complete Exhibit A text string
     """
     try:
-        # Start with general description
-        with open(gen_desc_path, 'r') as f:
-            exhibit = f.read() + '\n\n'
+        print(f"[DEBUG] Building exhibit string for {len(parcels)} parcels")
         
-        # Add image if provided
-        if img_b64:
-            exhibit += f'[IMAGE:{img_b64}]\n\n'
+        # Validate parcels data
+        if not isinstance(parcels, list) or len(parcels) == 0:
+            raise ValueError("Parcels must be a non-empty list")
         
-        # Load templates
-        with open(portion_desc_path, 'r') as f:
-            portion_tpl = f.read()
-        with open(normal_desc_path, 'r') as f:
-            normal_tpl = f.read()
+        # Define template file paths for normal and portion templates
+        template_paths = {
+            'normal': os.path.join('templates', 'exhibit', 'normal_portion.txt'),
+            'portion': os.path.join('templates', 'exhibit', 'portion_description.txt')
+        }
         
-        # Process each parcel
-        for parcel in parcels:
-            parcel_num = parcel.get('parcelNumber', '')
+        # Define default content for each template type
+        default_templates = {
+            'normal': "Parcel [i]:\n\nA parcel of the property described as follows...",
+            'portion': "Portion [i]:\n\nThis portion of the property is described as follows..."
+        }
+        
+        # Create template files if they don't exist
+        for template_type, path in template_paths.items():
+            try:
+                if not os.path.exists(path):
+                    os.makedirs(os.path.dirname(path), exist_ok=True)
+                    with open(path, 'w', encoding='utf-8') as f:
+                        f.write(default_templates[template_type])
+                    print(f"[DEBUG] Created template file: {path}")
+            except Exception as e:
+                print(f"[ERROR] Failed to create template file {path}: {str(e)}")
+        
+        # Read general description template
+        gen_desc_path = os.path.join('templates', 'exhibit', 'general_description.txt')
+        try:
+            if not os.path.exists(gen_desc_path):
+                os.makedirs(os.path.dirname(gen_desc_path), exist_ok=True)
+                with open(gen_desc_path, 'w', encoding='utf-8') as f:
+                    f.write("EXHIBIT A\n\nGeneral Description of Property\n\nThis exhibit contains the legal description of the property subject to this agreement.")
+            
+            with open(gen_desc_path, 'r', encoding='utf-8') as f:
+                general_description = f.read().strip()
+        except FileNotFoundError:
+            general_description = "EXHIBIT A\n\nGeneral Description of Property\n\nThis exhibit contains the legal description of the property subject to this agreement."
+        
+        # Build the exhibit string
+        exhibit_parts = [general_description]
+        
+        # Add image placeholder
+        exhibit_parts.append("\n[Image]\n")
+        
+        # Add parcel descriptions with dynamic template selection
+        for i, parcel in enumerate(parcels, 1):
+            if not isinstance(parcel, dict) or 'parcelNumber' not in parcel:
+                print(f"[WARNING] Invalid parcel data at index {i}: {parcel}")
+                continue
+            
+            parcel_number = parcel.get('parcelNumber', i)
             is_portion = parcel.get('isPortion', False)
+            template_type = 'portion' if is_portion else 'normal'
             
-            if is_portion:
-                # Use portion template
-                parcel_text = portion_tpl.replace('[i]', str(parcel_num))
-            else:
-                # Use normal parcel template
-                parcel_text = normal_tpl.replace('[i]', str(parcel_num))
+            # Read the selected template
+            template_path = template_paths[template_type]
+            try:
+                with open(template_path, 'r', encoding='utf-8') as f:
+                    template_content = f.read().strip()
+            except FileNotFoundError:
+                print(f"[WARNING] Template file not found: {template_path}, using default")
+                template_content = default_templates[template_type]
             
-            exhibit += parcel_text + '\n\n'
+            # Replace placeholder with parcel number
+            parcel_description = template_content.replace('[i]', str(parcel_number))
+            
+            print(f"[DEBUG] Parcel {parcel_number}: Using template '{template_type}' (isPortion: {is_portion})")
+            exhibit_parts.append(f"\n{parcel_description}")
         
-        return exhibit
+        # Join all parts
+        exhibit_string = '\n'.join(exhibit_parts)
+        
+        print(f"[DEBUG] Generated exhibit string, length: {len(exhibit_string)}")
+        return exhibit_string
+        
     except Exception as e:
-        return f"Error building exhibit string: {str(e)}"
+        print(f"[ERROR] Failed to build exhibit string: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 def getNotaryBlock():
     """Get hardcoded notary block template"""
@@ -195,3 +395,8 @@ def getSigBlock(ownerType: str, numSignatures: int):
             return f"Signature block template file '{filename}' not found.\nOwner Type: {owner_type}\nNumber of Signatures: {num_signatures}"
     # Fallback sample return
     return f"Signature Block\nOwner Type: {owner_type}\nNumber of Signatures: {num_signatures}\n\n[Signature lines would be generated here based on these values]"
+
+
+
+
+

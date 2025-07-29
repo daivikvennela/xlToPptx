@@ -1,0 +1,9 @@
+Custom Parcel [i]:
+
+A specially designated parcel of the property described as follows:
+
+That certain parcel of land designated as Parcel [i], containing approximately [Acres] acres, more or less, as shown on the survey map attached hereto as Exhibit A-[i].
+
+Said parcel is subject to all existing easements, restrictions, and encumbrances of record, and includes all improvements thereon and all rights, privileges, and appurtenances thereto belonging.
+
+This parcel has been specially designated for [specific purpose or designation] and is subject to the terms and conditions set forth in this agreement. 

@@ -41,7 +41,9 @@ TEMPLATE_V2_DIR = 'templates/slide_templates/msa_exec/mainTemp'
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = None  # No size limit
+app.config['MAX_CONTENT_PATH'] = None  # No path length limit
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # No caching for large files
 
 # Create uploads folder if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -658,7 +660,11 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
     Ensures font and bold/italic consistency after replacement.
     Excludes brackets from the replaced value.
     Also processes footnotes for replacements.
+    Handles image embedding for [EXHIBIT_A_IMAGE_1] placeholder.
     """
+    # Import embedImage function
+    from block_replacer import embedImage
+    
     def replace_in_runs(runs, mapping):
         full_text = ''.join(run.text for run in runs)
         for key, value in mapping.items():
@@ -693,6 +699,19 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
         for table in getattr(block, 'tables', []):
             process_table(table, mapping)
 
+    # Handle image embedding before text replacement
+    exhibit_a_image_1 = mapping.get('[EXHIBIT_A_IMAGE_1]', '').strip()
+    if exhibit_a_image_1:
+        try:
+            # Embed the image
+            success = embedImage(doc, exhibit_a_image_1, '[EXHIBIT_A_IMAGE_1]')
+            if success:
+                print("Successfully embedded Exhibit A image")
+            else:
+                print("Failed to embed Exhibit A image")
+        except Exception as e:
+            print(f"Error embedding image: {str(e)}")
+
     # Main document
     for paragraph in doc.paragraphs:
         process_paragraph(paragraph, mapping)
@@ -716,7 +735,11 @@ def replace_placeholders_in_docx_with_track_changes(doc: Document, mapping: dict
     Instead of direct replacement, highlight the placeholder and replace it with the new value (no brackets) as a suggestion.
     Only replaces exact keys as provided in the mapping, and only if the value is non-empty.
     Excludes brackets from the replaced value.
+    Handles image embedding for [EXHIBIT_A_IMAGE_1] placeholder.
     """
+    # Import embedImage function
+    from block_replacer import embedImage
+    
     def process_paragraph(paragraph, mapping):
         for run in paragraph.runs:
             for key, value in mapping.items():
@@ -746,6 +769,19 @@ def replace_placeholders_in_docx_with_track_changes(doc: Document, mapping: dict
                 for paragraph in cell.paragraphs:
                     process_paragraph(paragraph, mapping)
 
+    # Handle image embedding before text replacement
+    exhibit_a_image_1 = mapping.get('[EXHIBIT_A_IMAGE_1]', '').strip()
+    if exhibit_a_image_1:
+        try:
+            # Embed the image
+            success = embedImage(doc, exhibit_a_image_1, '[EXHIBIT_A_IMAGE_1]')
+            if success:
+                print("Successfully embedded Exhibit A image")
+            else:
+                print("Failed to embed Exhibit A image")
+        except Exception as e:
+            print(f"Error embedding image: {str(e)}")
+
     # Main document
     for paragraph in doc.paragraphs:
         process_paragraph(paragraph, mapping)
@@ -753,10 +789,17 @@ def replace_placeholders_in_docx_with_track_changes(doc: Document, mapping: dict
         process_table(table, mapping)
     # Headers and footers
     for section in doc.sections:
-        for paragraph in section.header.paragraphs:
+        header = section.header
+        footer = section.footer
+        for paragraph in header.paragraphs:
             process_paragraph(paragraph, mapping)
-        for paragraph in section.footer.paragraphs:
+        for paragraph in footer.paragraphs:
             process_paragraph(paragraph, mapping)
+    # Footnotes (if present)
+    if hasattr(doc, 'part') and hasattr(doc.part, 'footnotes'):
+        for footnote in doc.part.footnotes.part.footnotes:
+            for paragraph in footnote.paragraphs:
+                process_paragraph(paragraph, mapping)
     return doc
 
 def parse_kv_table_file(file_storage):
@@ -943,86 +986,150 @@ def remove_acknowledgment_blocks_enforced(doc, grantee_type):
 
 @app.route('/lease_population_replace', methods=['POST'])
 def lease_population_replace():
-    if 'docx' not in request.files or 'mapping' not in request.form:
-        return jsonify({'error': 'Missing file or mapping'}), 400
-    docx_file = request.files['docx']
-    mapping_json = request.form['mapping']
-    track_changes = request.form.get('track_changes', 'false').lower() == 'true'
-    document_name = request.form.get('document_name', 'lease_population_filled')
     try:
-        mapping_raw = json.loads(mapping_json)
-        mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
-        if track_changes:
-            mapping = {k: f"NEW:{v}" for k, v in mapping.items()}
-    except Exception as e:
-        return jsonify({'error': 'Invalid mapping format'}), 400
-    # --- Robust Party Type Detection ---
-    grantor_type = mapping.get('[Grantor Type]', '').strip().lower()
-    print(f"[DEBUG] Detected Grantor Type: {grantor_type}")
-    # --- Robust Placeholder Replacement ---
-    try:
-        doc = Document(docx_file)
-        # Ensure modern Word compatibility
-        if hasattr(doc.core_properties, 'version'):
-            doc.core_properties.version = '16.0'
-        if hasattr(doc.core_properties, 'last_modified_by'):
-            doc.core_properties.last_modified_by = 'Document Processor'
-        def replace_in_runs(runs, mapping):
-            full_text = ''.join(run.text for run in runs)
+        if 'docx' not in request.files or 'mapping' not in request.form:
+            return jsonify({'error': 'Missing file or mapping'}), 400
+        
+        print(f"[DEBUG] Request content length: {request.content_length}")
+        print(f"[DEBUG] Request content type: {request.content_type}")
+        
+        docx_file = request.files['docx']
+        mapping_json = request.form['mapping']
+        track_changes = request.form.get('track_changes', 'false').lower() == 'true'
+        document_name = request.form.get('document_name', 'lease_population_filled')
+        
+        # Get image data from request if available
+        exhibit_a_image_1 = None
+        image_file = request.files.get('exhibit_image')
+        
+        if image_file:
+            try:
+                # Read the file data directly without base64 conversion
+                image_data = image_file.read()
+                print(f"[DEBUG] Raw image file size: {len(image_data)} bytes")
+                
+                # Convert to base64 for storage
+                import base64
+                exhibit_a_image_1 = base64.b64encode(image_data).decode('utf-8')
+                print(f"[DEBUG] Converted to base64, size: {len(exhibit_a_image_1)} characters")
+                
+                # Verify the conversion worked
+                test_decode = base64.b64decode(exhibit_a_image_1)
+                print(f"[DEBUG] Verification decode size: {len(test_decode)} bytes")
+                
+            except Exception as e:
+                print(f"[ERROR] Failed to process image file: {str(e)}")
+                import traceback
+                traceback.print_exc()
+        
+        # Fallback: check for image data in form field
+        if not exhibit_a_image_1:
+            exhibit_a_image_1 = request.form.get('exhibit_a_image_1', '').strip()
+            if exhibit_a_image_1:
+                print(f"[DEBUG] Using form field image data, size: {len(exhibit_a_image_1)} characters")
+                
+                # Validate base64 data
+                try:
+                    import base64
+                    test_decode = base64.b64decode(exhibit_a_image_1)
+                    print(f"[DEBUG] Form field image validation successful: {len(test_decode)} bytes")
+                except Exception as e:
+                    print(f"[ERROR] Invalid base64 image data: {str(e)}")
+                    exhibit_a_image_1 = None
+        
+        print(f"[DEBUG] Processing document: {document_name}")
+        print(f"[DEBUG] Track changes: {track_changes}")
+        print(f"[DEBUG] Image data present: {bool(exhibit_a_image_1)}")
+        if exhibit_a_image_1:
+            print(f"[DEBUG] Image data size: {len(exhibit_a_image_1)} characters")
+        
+        try:
+            mapping_raw = json.loads(mapping_json)
+            mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
+            
+            # Add image data to mapping if available
+            if exhibit_a_image_1:
+                mapping['[EXHIBIT_A_IMAGE_1]'] = exhibit_a_image_1
+                print(f"[DEBUG] Added image data to mapping")
+            
+            if track_changes:
+                mapping = {k: f"NEW:{v}" for k, v in mapping.items()}
+            
+            print(f"[DEBUG] Total mapping items: {len(mapping)}")
+            print(f"[DEBUG] Mapping keys: {list(mapping.keys())}")
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to parse mapping: {str(e)}")
+            return jsonify({'error': 'Invalid mapping format'}), 400
+        
+        # --- Robust Party Type Detection ---
+        grantor_type = mapping.get('[Grantor Type]', '').strip().lower()
+        print(f"[DEBUG] Detected Grantor Type: {grantor_type}")
+        
+        # --- Enhanced Placeholder Replacement with Image Embedding ---
+        try:
+            doc = Document(docx_file)
+            # Ensure modern Word compatibility
+            if hasattr(doc.core_properties, 'version'):
+                doc.core_properties.version = '16.0'
+            if hasattr(doc.core_properties, 'last_modified_by'):
+                doc.core_properties.last_modified_by = 'Document Processor'
+            
+            # Process image placeholders BEFORE text replacement
+            image_placeholders = []
             for key, value in mapping.items():
-                if not value.strip():
-                    continue
-                # Replace exact key only
-                full_text = full_text.replace(key, value)
-            if runs:
-                runs[0].text = full_text
-                for run in runs[1:]:
-                    run.text = ''
-        def process_paragraph(paragraph, mapping):
-            if not paragraph.runs:
-                return
-            joined = ''.join(run.text for run in paragraph.runs)
-            if any(key in joined for key in mapping.keys() if mapping[key].strip()):
-                replace_in_runs(paragraph.runs, mapping)
-        def process_table(table, mapping):
-            for row in table.rows:
-                for cell in row.cells:
-                    process_block(cell, mapping)
-        def process_block(block, mapping):
-            for paragraph in block.paragraphs:
-                process_paragraph(paragraph, mapping)
-            for table in getattr(block, 'tables', []):
-                process_table(table, mapping)
-        # Main document
-        for paragraph in doc.paragraphs:
-            process_paragraph(paragraph, mapping)
-        for table in doc.tables:
-            process_table(table, mapping)
-        # Headers and footers
-        for section in doc.sections:
-            process_block(section.header, mapping)
-            process_block(section.footer, mapping)
-        # Footnotes
-        if hasattr(doc, 'part') and hasattr(doc.part, 'footnotes'):
-            for footnote in doc.part.footnotes.part.footnotes:
-                for paragraph in footnote.paragraphs:
-                    process_paragraph(paragraph, mapping)
-        # Debug: Log replaced placeholders
-        print(f"[DEBUG] Placeholders replaced: {list(mapping.keys())}")
-        from io import BytesIO
-        out_stream = BytesIO()
-        # Save in modern DOCX format to ensure compatibility
-        doc.save(out_stream, 'docx')
-        out_stream.seek(0)
-        safe_name = document_name.replace(' ', '_').replace('/', '_')
-        print(f"[DEBUG] lease_population_replace: Download filename will be: {safe_name}.docx (from document_name: {document_name})")
-        return send_file(out_stream, as_attachment=True, download_name=f'{safe_name}.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+                if key.strip().lower() == '[image]' and value.strip():
+                    image_placeholders.append((key, value))
+                    print(f"[DEBUG] Found image placeholder: {key}")
+                    print(f"[DEBUG] Image data size: {len(value)} characters")
+            
+            # Handle image embedding for each image placeholder
+            for placeholder_key, image_data in image_placeholders:
+                try:
+                    print(f"[DEBUG] Attempting to embed image for placeholder: {placeholder_key}")
+                    from block_replacer import embedImage
+                    success = embedImage(doc, image_data, placeholder_key)
+                    if success:
+                        print(f"[DEBUG] Image embedding successful for {placeholder_key}")
+                        # Remove from mapping to prevent text replacement
+                        mapping[placeholder_key] = ''  # Clear the value but keep the key for logging
+                    else:
+                        print(f"[WARNING] Image embedding failed for {placeholder_key}, will attempt text replacement")
+                except Exception as e:
+                    print(f"[ERROR] Image embedding error for {placeholder_key}: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # Use the enhanced replacement function for remaining text placeholders
+            if track_changes:
+                doc = replace_placeholders_in_docx_with_track_changes(doc, mapping)
+            else:
+                doc = replace_placeholders_in_docx(doc, mapping)
+            
+            # Debug: Log replaced placeholders
+            print(f"[DEBUG] Text placeholders replaced: {list(mapping.keys())}")
+            
+            from io import BytesIO
+            out_stream = BytesIO()
+            # Save in modern DOCX format to ensure compatibility
+            doc.save(out_stream)
+            out_stream.seek(0)
+            safe_name = document_name.replace(' ', '_').replace('/', '_')
+            print(f"[DEBUG] lease_population_replace: Download filename will be: {safe_name}.docx (from document_name: {document_name})")
+            return send_file(out_stream, as_attachment=True, download_name=f'{safe_name}.docx', mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+        except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
+            print(f"ERROR in lease_population_replace: {str(e)}")
+            print(f"TRACEBACK: {error_traceback}")
+            return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
+            
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
-        print(f"ERROR in lease_population_replace: {str(e)}")
+        print(f"CRITICAL ERROR in lease_population_replace: {str(e)}")
         print(f"TRACEBACK: {error_traceback}")
-        return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
+        return jsonify({'error': f'Critical error: {str(e)}', 'traceback': error_traceback}), 500
 
 @app.route('/test_party_type', methods=['POST'])
 def test_party_type():
@@ -1097,7 +1204,7 @@ def test_party_type():
         from io import BytesIO
         out_stream = BytesIO()
         # Save in modern DOCX format to ensure compatibility
-        doc.save(out_stream, 'docx')
+        doc.save(out_stream)
         out_stream.seek(0)
         safe_name = document_name.replace(' ', '_').replace('/', '_')
         print(f"[DEBUG] test_party_type: Download filename will be: {safe_name}.docx (from document_name: {document_name})")
@@ -1821,42 +1928,35 @@ def gen_exhibit_a():
     """
     try:
         # Get parcels data
-        parcels_json = request.form.get('parcels', '[]')
-        parcels = json.loads(parcels_json)
+        parcels_data = request.form.get('parcels')
+        if not parcels_data:
+            return jsonify({'error': 'No parcels data provided'}), 400
         
-        # Get image file if provided
-        image_file = request.files.get('image')
-        img_b64 = None
-        if image_file:
-            import base64
-            img_b64 = base64.b64encode(image_file.read()).decode('utf-8')
+        try:
+            parcels = json.loads(parcels_data)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'Invalid JSON format for parcels data'}), 400
         
-        # Define template file paths
-        gen_desc_path = os.path.join('templates', 'exhibit', 'general_description.txt')
-        portion_desc_path = os.path.join('templates', 'exhibit', 'portion_description.txt')
-        normal_desc_path = os.path.join('templates', 'exhibit', 'normal_portion.txt')
+        # Validate parcels data
+        if not isinstance(parcels, list) or len(parcels) == 0:
+            return jsonify({'error': 'Parcels data must be a non-empty list'}), 400
         
-        # Check if template files exist, create defaults if not
-        if not os.path.exists(gen_desc_path):
-            os.makedirs(os.path.dirname(gen_desc_path), exist_ok=True)
-            with open(gen_desc_path, 'w') as f:
-                f.write("EXHIBIT A\n\nGeneral Description of Property\n\nThis exhibit contains the legal description of the property subject to this agreement.")
+        print(f"[DEBUG] Processing {len(parcels)} parcels for Exhibit A generation")
         
-        if not os.path.exists(portion_desc_path):
-            os.makedirs(os.path.dirname(portion_desc_path), exist_ok=True)
-            with open(portion_desc_path, 'w') as f:
-                f.write("Portion [i]:\n\nThis portion of the property is described as follows...")
-        
-        if not os.path.exists(normal_desc_path):
-            os.makedirs(os.path.dirname(normal_desc_path), exist_ok=True)
-            with open(normal_desc_path, 'w') as f:
-                f.write("Parcel [i]:\n\nA parcel of the property described as follows...")
-        
-        # Import and use the helper function
-        from block_replacer import build_exhibit_string
-        exhibit_string = build_exhibit_string(parcels, img_b64, gen_desc_path, portion_desc_path, normal_desc_path)
-        
-        return jsonify({'exhibit_string': exhibit_string})
+        # Generate exhibit string using the build_exhibit_string function
+        try:
+            from block_replacer import build_exhibit_string
+            exhibit_string = build_exhibit_string(parcels)
+            print(f"[DEBUG] Generated exhibit string, length: {len(exhibit_string)}")
+            return jsonify({
+                'exhibit_string': exhibit_string,
+                'parcel_count': len(parcels)
+            })
+        except Exception as e:
+            print(f"[ERROR] Failed to generate exhibit string: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Failed to generate exhibit string: {str(e)}'}), 500
         
     except Exception as e:
         import traceback
@@ -1864,6 +1964,152 @@ def gen_exhibit_a():
         print(f"ERROR in gen_exhibit_a: {str(e)}")
         print(f"TRACEBACK: {error_traceback}")
         return jsonify({'error': f'Failed to generate exhibit string: {str(e)}', 'traceback': error_traceback}), 500
+
+@app.route('/test_image_embedding', methods=['POST'])
+def test_image_embedding():
+    """
+    Test route to verify image embedding functionality
+    """
+    try:
+        if 'docx' not in request.files:
+            return jsonify({'error': 'No DOCX file uploaded'}), 400
+        
+        docx_file = request.files['docx']
+        if not docx_file.filename.endswith('.docx'):
+            return jsonify({'error': 'Please upload a DOCX file'}), 400
+        
+        # Load the document
+        doc = Document(docx_file)
+        
+        # Test with a sample image (1x1 pixel PNG)
+        sample_image_data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+        
+        # Test the embedImage function
+        from block_replacer import embedImage
+        success = embedImage(doc, sample_image_data, '[EXHIBIT_A_IMAGE_1]')
+        
+        if success:
+            # Save the test document
+            import tempfile
+            import os
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_file:
+                doc.save(tmp_file.name)
+                tmp_file_path = tmp_file.name
+            
+            # Return success with file path
+            return jsonify({
+                'success': True,
+                'message': 'Image embedding test successful',
+                'file_path': tmp_file_path
+            })
+        else:
+            return jsonify({'error': 'Image embedding test failed'}), 500
+            
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in test_image_embedding: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Test failed: {str(e)}', 'traceback': error_traceback}), 500
+
+@app.route('/test_image_embedding_comprehensive', methods=['POST'])
+def test_image_embedding_comprehensive():
+    """
+    Comprehensive test route for image embedding functionality.
+    Tests various scenarios: valid PNG, invalid files, missing placeholders, etc.
+    """
+    try:
+        print(f"[TEST] Starting comprehensive image embedding test")
+        
+        # Test 1: Valid PNG file
+        if 'valid_png' in request.files:
+            image_file = request.files['valid_png']
+            print(f"[TEST] Testing valid PNG: {image_file.filename}")
+            
+            # Process the image
+            image_data = image_file.read()
+            if image_data.startswith(b'\x89PNG\r\n\x1a\n'):
+                print(f"[TEST] ✓ Valid PNG header detected")
+            else:
+                print(f"[TEST] ✗ Invalid PNG header")
+                return jsonify({'error': 'Invalid PNG file'}), 400
+            
+            # Convert to base64
+            import base64
+            img_b64 = base64.b64encode(image_data).decode('utf-8')
+            print(f"[TEST] ✓ Base64 conversion successful: {len(img_b64)} chars")
+            
+            # Test image embedding function
+            from block_replacer import embedImage
+            from docx import Document
+            from io import BytesIO
+            
+            # Create test document
+            doc = Document()
+            doc.add_paragraph("Test document with [EXHIBIT_A_IMAGE_1] placeholder")
+            
+            # Test embedding
+            success = embedImage(doc, img_b64, '[EXHIBIT_A_IMAGE_1]')
+            if success:
+                print(f"[TEST] ✓ Image embedding successful")
+                
+                # Save test document
+                test_output = BytesIO()
+                doc.save(test_output)
+                test_output.seek(0)
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'Image embedding test passed',
+                    'image_size': len(image_data),
+                    'base64_size': len(img_b64),
+                    'embedding_success': True
+                })
+            else:
+                print(f"[TEST] ✗ Image embedding failed")
+                return jsonify({'error': 'Image embedding test failed'}), 500
+        
+        # Test 2: Invalid file type
+        elif 'invalid_file' in request.files:
+            print(f"[TEST] Testing invalid file type")
+            return jsonify({'error': 'Invalid file type test - should be rejected'}), 400
+        
+        # Test 3: Missing placeholder
+        elif 'missing_placeholder' in request.files:
+            image_file = request.files['missing_placeholder']
+            image_data = image_file.read()
+            import base64
+            img_b64 = base64.b64encode(image_data).decode('utf-8')
+            
+            # Create test document WITHOUT placeholder
+            from docx import Document
+            from block_replacer import embedImage
+            
+            doc = Document()
+            doc.add_paragraph("Test document WITHOUT placeholder")
+            
+            # Test embedding (should fail gracefully)
+            success = embedImage(doc, img_b64, '[EXHIBIT_A_IMAGE_1]')
+            if not success:
+                print(f"[TEST] ✓ Correctly failed to embed image (no placeholder)")
+                return jsonify({
+                    'success': True,
+                    'message': 'Missing placeholder test passed - correctly failed',
+                    'embedding_success': False
+                })
+            else:
+                print(f"[TEST] ✗ Should have failed but didn't")
+                return jsonify({'error': 'Missing placeholder test failed'}), 500
+        
+        else:
+            return jsonify({'error': 'No test file provided'}), 400
+            
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"[TEST ERROR] {str(e)}")
+        print(f"[TEST TRACEBACK] {error_traceback}")
+        return jsonify({'error': f'Test failed: {str(e)}', 'traceback': error_traceback}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 

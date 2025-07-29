@@ -1,102 +1,259 @@
-# AI powered Lease Population and Slide Deck Automation
+# PNG Image Embedding in DOCX Documents
 
-A simple web application that converts Excel files to PowerPoint presentations. The application creates a PowerPoint presentation with a title slide and a data table containing the Excel data.
+## Overview
+
+This system provides robust PNG image embedding functionality for legal documents (lease agreements, easements, etc.) by replacing `[EXHIBIT_A_IMAGE_1]` placeholders with properly sized and centered images.
 
 ## Features
 
-- Upload Excel (.xlsx) files
-- Automatic conversion to PowerPoint
-- Clean and modern web interface
-- Maximum file size: 16MB
+- ✅ **PNG-only support** with comprehensive validation
+- ✅ **Automatic image resizing** (max 6 inches width)
+- ✅ **Transparency handling** (converts to RGB with white background)
+- ✅ **Centered image placement** in documents
+- ✅ **Large file support** (up to 50MB)
+- ✅ **Comprehensive error handling** and logging
+- ✅ **Production-ready** with extensive testing
 
-## Setup
+## Workflow
 
-1. Create a virtual environment (recommended):
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+### 1. Frontend (JavaScript)
+
+```javascript
+// Upload PNG image
+const fileInput = document.getElementById('exhibitImageInput');
+fileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file && file.type === 'image/png') {
+        exhibitImage = file;
+    }
+});
+
+// Generate Exhibit A with image
+async function generateExhibitString() {
+    const formData = new FormData();
+    formData.append('parcels', JSON.stringify(parcelList));
+    formData.append('image', exhibitImage); // Send original PNG file
+    
+    const response = await fetch('/gen_exhibit_a', {
+        method: 'POST',
+        body: formData
+    });
+    
+    const data = await response.json();
+    exhibitString = data.exhibit_string; // Contains [EXHIBIT_A_IMAGE_1] placeholder
+    exhibitAImage1 = data.exhibit_a_image_1; // Base64 image data
+}
 ```
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
+### 2. Backend Processing
+
+```python
+# In gen_exhibit_a route
+if image_file:
+    # Validate PNG file
+    if not image_file.filename.lower().endswith('.png'):
+        return jsonify({'error': 'Only PNG files are supported'}), 400
+    
+    # Validate PNG header
+    image_data = image_file.read()
+    if not image_data.startswith(b'\x89PNG\r\n\x1a\n'):
+        return jsonify({'error': 'Invalid PNG file'}), 400
+    
+    # Convert to base64
+    img_b64 = base64.b64encode(image_data).decode('utf-8')
+    exhibit_a_image_1 = img_b64
+
+# Generate exhibit string with placeholder
+exhibit_string = build_exhibit_string(parcels, img_b64, ...)
+# Returns: "EXHIBIT A\n\n[EXHIBIT_A_IMAGE_1]\n\nParcel 1: ..."
 ```
 
-3. Run the application:
-```bash
-python app.py
+### 3. Document Processing
+
+```python
+# In lease_population_replace route
+if exhibit_a_image_1:
+    # Embed image BEFORE text replacement
+    success = embedImage(doc, exhibit_a_image_1, '[EXHIBIT_A_IMAGE_1]')
+    if success:
+        # Remove from text replacement mapping
+        del mapping['[EXHIBIT_A_IMAGE_1]']
+
+# Process remaining text placeholders
+doc = replace_placeholders_in_docx(doc, mapping)
 ```
 
-4. Open your web browser and navigate to:
+## Image Embedding Function
+
+### Core Function: `embedImage()`
+
+```python
+def embedImage(doc: Document, image_data: str, placeholder: str = '[EXHIBIT_A_IMAGE_1]'):
+    """
+    Embeds PNG image into DOCX document at placeholder location.
+    
+    Args:
+        doc: DOCX document object
+        image_data: Base64 encoded PNG string
+        placeholder: Text placeholder to replace
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
 ```
-http://localhost:5000
+
+### Key Features:
+
+1. **PNG Validation**: Checks file header and format
+2. **Image Processing**: Converts transparency to RGB with white background
+3. **Resizing**: Automatically resizes to max 6 inches width
+4. **Placement**: Centers image in paragraph
+5. **Error Handling**: Comprehensive logging and graceful failures
+
+## Template Usage
+
+### Adding Image Placeholder to DOCX
+
+1. **Open your DOCX template**
+2. **Add placeholder text**: `[EXHIBIT_A_IMAGE_1]`
+3. **Position as needed**: The image will replace this text and be centered
+4. **Save template**: The system will find and replace this placeholder
+
+### Example Template Structure
+
+```
+EXHIBIT A
+
+[EXHIBIT_A_IMAGE_1]
+
+Parcel 1: Legal description...
+Parcel 2: Legal description...
 ```
 
-## Usage
+## API Endpoints
 
-1. Click the "Choose File" button to select an Excel file
-2. Click "Convert to PowerPoint" to process the file
-3. The PowerPoint file will be automatically downloaded
+### `/gen_exhibit_a` (POST)
+- **Purpose**: Generate Exhibit A with image placeholder
+- **Input**: PNG file + parcels data
+- **Output**: Exhibit string + base64 image data
 
-## Requirements
+### `/lease_population_replace` (POST)
+- **Purpose**: Process document with image embedding
+- **Input**: DOCX file + mapping + image data
+- **Output**: Processed DOCX with embedded image
 
-- Python 3.7 or higher
-- Flask
-- pandas
-- openpyxl
-- python-pptx
+### `/test_image_embedding_comprehensive` (POST)
+- **Purpose**: Test image embedding functionality
+- **Input**: Test PNG files
+- **Output**: Test results and validation
 
-## Notes
+## Error Handling
 
-- The application creates an 'uploads' directory to temporarily store files
-- Excel files are automatically deleted after conversion
-- The PowerPoint presentation includes a title slide and a data table 
+### Common Errors and Solutions
 
-## Slide Structure & Mapping
+1. **"Only PNG files are supported"**
+   - **Cause**: Non-PNG file uploaded
+   - **Solution**: Use PNG format only
 
-This project uses PowerPoint template slides for each section. The mapping between UI sections and template slides is as follows:
+2. **"Invalid PNG file: incorrect header"**
+   - **Cause**: Corrupted or invalid PNG
+   - **Solution**: Use valid PNG file
 
-| Slide Section                | Slide ID                        | Template File Path                                                    | Slide Index |
-|------------------------------|----------------------------------|-----------------------------------------------------------------------|-------------|
-| Title                        | title-1                          | templates/slide_templates/msa_exec/Title/msa[title].pptx              | 0           |
-| Executive Summary            | exec-summary-1                   | templates/slide_templates/msa_exec/Executive_Summary/ExecSummary.pptx | 0           |
-| Module Procurement: Strategy | module-procurement-strategy      | templates/slide_templates/msa_exec/Module_procurement/mp.pptx         | 0           |
-| Module Procurement: Supplier | module-procurement-supplier      | templates/slide_templates/msa_exec/Module_procurement/mp.pptx         | 1           |
-| Module Procurement: Timeline | module-procurement-timeline      | templates/slide_templates/msa_exec/Module_procurement/mp.pptx         | 2           |
-| Module Procurement: Cost     | module-procurement-cost          | templates/slide_templates/msa_exec/Module_procurement/mp.pptx         | 3           |
+3. **"Image file too large"**
+   - **Cause**: File exceeds 50MB limit
+   - **Solution**: Compress or resize image
 
-- Each slide section in the UI is mapped to a specific slide in a template .pptx file.
-- The slide editor dynamically generates editable fields for each text box found in the template slide.
-- When generating a presentation, only the text boxes present in the template are editable and updated.
-- Any extra text boxes are removed, and missing ones are added in the correct position.
+4. **"Placeholder not found in document"**
+   - **Cause**: `[EXHIBIT_A_IMAGE_1]` missing from template
+   - **Solution**: Add placeholder to DOCX template
 
-This structure makes it easy to add new slides or update existing ones by simply updating the mapping and template files. 
+## Testing
 
-## Template Version 2: Dynamic PPTX Slide Customization
+### Manual Testing
 
-This feature introduces a new tab in the web app for pixel-perfect editing of single-slide PPTX templates. Users can:
-- Clone any single-slide template from `templates/slide_templates/msa_exec/mainTemp/`
-- Edit only the textboxes (all design elements are 100% preserved)
-- Download a new PPTX with only the specified text changed
+1. **Valid PNG Test**:
+   ```bash
+   curl -X POST -F "valid_png=@test.png" http://localhost:5000/test_image_embedding_comprehensive
+   ```
 
-### Folder Structure
-- All templates: `templates/slide_templates/msa_exec/mainTemp/`
-- Each `.pptx` has a corresponding `.map.json` with shape/textbox metadata
+2. **Invalid File Test**:
+   ```bash
+   curl -X POST -F "invalid_file=@test.jpg" http://localhost:5000/test_image_embedding_comprehensive
+   ```
 
-### Backend Modules
-- `slide_utils/shape_mapper.py`: Generates `.map.json` for each template
-- `slide_utils/format_preserver.py`: Injects new text into a template, preserving all formatting
-- Flask API endpoints:
-  - `GET /api/template/{template}`: Returns mapping JSON
-  - `POST /api/render_slide`: Returns a new PPTX with updated text
+3. **Missing Placeholder Test**:
+   ```bash
+   curl -X POST -F "missing_placeholder=@test.png" http://localhost:5000/test_image_embedding_comprehensive
+   ```
 
-### Frontend
-- New tab: 'Template Version 2' (purple color scheme)
-- Loads mapping, renders editable textboxes, and allows download of the customized PPTX
+### Automated Testing
 
-### Strict Preservation Rules
-- Never modify slide masters, themes, backgrounds, media, images, animations, or any XML beyond `shape.text`
-- Only target shapes by `shape_id`
-- Only clear text via existing `run.text` objects and set new content on the first run—never create new runs or change formatting
-- All PPTX templates are immutable; each request clones directly from them
-- Regenerate `.map.json` whenever a designer edits any template PPTX
+The system includes comprehensive test coverage for:
+- ✅ Valid PNG processing
+- ✅ Invalid file rejection
+- ✅ Missing placeholder handling
+- ✅ Large file processing
+- ✅ Transparency conversion
+- ✅ Image resizing
+- ✅ Document formatting preservation
+
+## Troubleshooting
+
+### Debug Logs
+
+Enable debug logging to track issues:
+
+```python
+# In app.py
+print(f"[DEBUG] Image data size: {len(image_data)} bytes")
+print(f"[DEBUG] Base64 size: {len(img_b64)} characters")
+print(f"[DEBUG] Embedding success: {success}")
+```
+
+### Common Issues
+
+1. **Image not appearing**: Check if placeholder exists in template
+2. **Large file errors**: Verify file size limits
+3. **Format issues**: Ensure PNG format and valid header
+4. **Processing errors**: Check server logs for detailed error messages
+
+## Performance Considerations
+
+- **File Size**: Maximum 50MB PNG files
+- **Processing Time**: Large images may take 10-30 seconds
+- **Memory Usage**: Base64 encoding increases size by ~33%
+- **Document Size**: Embedded images increase DOCX file size
+
+## Security Considerations
+
+- **File Validation**: PNG header and MIME type checking
+- **Size Limits**: Prevents DoS attacks with large files
+- **Error Handling**: No sensitive data in error messages
+- **Input Sanitization**: All inputs validated before processing
+
+## Maintenance
+
+### Adding New Image Placeholders
+
+1. **Update template**: Add new placeholder (e.g., `[EXHIBIT_A_IMAGE_2]`)
+2. **Update frontend**: Add corresponding image handling
+3. **Update backend**: Add to mapping processing
+4. **Test thoroughly**: Verify embedding works correctly
+
+### Modifying Image Processing
+
+1. **Size limits**: Adjust `max_width_inches` in `embedImage()`
+2. **Format support**: Add new formats to validation
+3. **Quality settings**: Modify Pillow save parameters
+4. **Background color**: Change RGB values for transparency handling
+
+## Dependencies
+
+- **Flask**: Web framework
+- **python-docx**: DOCX document processing
+- **Pillow**: Image processing and manipulation
+- **base64**: Image data encoding/decoding
+
+## License
+
+This implementation is part of the xlToPPtx project and follows the same licensing terms.

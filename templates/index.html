@@ -1007,6 +1007,7 @@
                             <!-- Dynamic key-value pairs will be inserted here -->
                         </div>
                         <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
+                        <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
                         <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
                         <button type="button" class="secondary-btn" id="exportJsonBtn" style="margin-top:1rem;">Export Mapping as JSON</button>
                     </form>
@@ -1921,9 +1922,79 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     div.remove();
                 };
             }
+
+            function addImageUploadPair(key = '[Image]', value = '') {
+                const pairId = 'pair-' + (++pairCount);
+                const div = document.createElement('div');
+                div.className = 'kv-pair-row';
+                div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                div.innerHTML = `
+                    <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                    <div style="flex:3; display:flex; flex-direction:column; gap:0.5rem;">
+                        <input type="file" class="image-upload-input" accept=".png" style="padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" onchange="handleImageUpload(this, '${pairId}')">
+                        <div class="image-preview" id="preview-${pairId}" style="max-width:200px; max-height:150px;"></div>
+                        <input type="hidden" class="kv-value" value="${value}">
+                    </div>
+                    <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+                `;
+                kvPairsContainer.appendChild(div);
+                div.querySelector('.remove-pair-btn').onclick = function() {
+                    div.remove();
+                };
+            }
+
             // Add initial pair
             addPair();
             addPairBtn.onclick = function() { addPair(); };
+
+            // Add image upload button
+            const addImageUploadBtn = document.getElementById('addImageUploadBtn');
+            if (addImageUploadBtn) {
+                addImageUploadBtn.onclick = function() { addImageUploadPair(); };
+            }
+
+            // Function to handle image upload
+            function handleImageUpload(input, pairId) {
+                const file = input.files[0];
+                const preview = document.getElementById(`preview-${pairId}`);
+                const hiddenInput = input.parentElement.querySelector('.kv-value');
+                
+                if (file) {
+                    // Validate file type
+                    if (file.type !== 'image/png') {
+                        alert('Please select a valid PNG image file.');
+                        input.value = '';
+                        preview.innerHTML = '';
+                        hiddenInput.value = '';
+                        return;
+                    }
+                    
+                    // Validate file size (50MB limit)
+                    if (file.size > 50 * 1024 * 1024) {
+                        alert('Image file too large (maximum 50MB allowed).');
+                        input.value = '';
+                        preview.innerHTML = '';
+                        hiddenInput.value = '';
+                        return;
+                    }
+                    
+                    // Convert to base64 and store
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const base64Data = e.target.result.split(',')[1]; // Remove data URL prefix
+                        hiddenInput.value = base64Data;
+                        
+                        // Show preview
+                        preview.innerHTML = `<img src="${e.target.result}" style="max-width:200px; max-height:150px; border-radius:8px;">`;
+                        
+                        console.log(`Image uploaded for pair ${pairId}, size: ${base64Data.length} characters`);
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    preview.innerHTML = '';
+                    hiddenInput.value = '';
+                }
+            }
 
             // Function to get document name from review replacement process
             function nameFile() {
@@ -2064,6 +2135,16 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 formData.append('mapping', JSON.stringify(mapping));
                 formData.append('track_changes', trackChanges ? 'true' : 'false');
                 formData.append('document_name', documentName);
+                
+                // Add image data if available (stored globally)
+                if (window.exhibitAImageData) {
+                    // Send base64 image data as form field for backend processing
+                    formData.append('exhibit_a_image_1', window.exhibitAImageData);
+                    console.log('Including image data in form submission');
+                    console.log('Image data size being sent:', window.exhibitAImageData.length, 'characters');
+                } else {
+                    console.log('No image data available for form submission');
+                }
                 // Show loading
                 this.disabled = true;
                 this.textContent = 'Processing...';
@@ -2147,7 +2228,11 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                         document.body.removeChild(downloadModal);
                     };
                 } catch (err) {
-                    docxValidationMsg.textContent = 'Error: ' + err.message;
+                    if (err.message.includes('413') || err.message.includes('REQUEST ENTITY TOO LARGE')) {
+                        docxValidationMsg.textContent = 'Error: File too large. Please try with a smaller image or fewer parcels.';
+                    } else {
+                        docxValidationMsg.textContent = 'Error: ' + err.message;
+                    }
                     docxValidationMsg.style.display = 'block';
                 } finally {
                     this.disabled = false;
@@ -2878,18 +2963,22 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
           document.body.appendChild(modal);
         }
 
-        // Parcel class for Exhibit A generation
+        // Parcel class with enhanced template support
         class Parcel {
-            constructor(parcelNumber, isPortion = false) {
-                this.parcelNumber = parcelNumber;
-                this.isPortion = isPortion;
-            }
+          constructor(parcelNumber) {
+            this.parcelNumber = parcelNumber;
+            this.isPortion = false; // Legacy support
+            this.templateType = 'normal'; // New template selection
+          }
         }
+
+
 
         // Exhibit A state management
         let parcelList = [];
         let exhibitString = '';
         let exhibitImage = null;
+        let exhibitAImage1 = null; // Variable to store the image data
 
         // Add event handler for the new button
         const quickFillBtn = document.getElementById('quickFillSigBlockBtn');
@@ -3045,12 +3134,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 <button id="addParcelBtn" class="secondary-btn" style="margin-bottom:1rem;">Add Parcel</button>
               </div>
               
-              <!-- Step 2: Image Upload -->
-              <div id="imageUploadSection" style="margin-bottom:1.5rem;">
-                <h3 style="color:#b5e0ff; margin-bottom:1rem;">Step 2: Upload Exhibit Image</h3>
-                <input type="file" id="exhibitImageInput" accept=".png" style="color:#e2e8f0; margin-bottom:1rem;">
-                <div id="imagePreview" style="margin-top:0.5rem;"></div>
-              </div>
+
               
               <!-- Step 3: Live Preview -->
               <div id="previewSection">
@@ -3104,7 +3188,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
           exhibitString = '';
           exhibitImage = null;
           
-          // Create initial parcel objects
+          // Create initial parcel objects with validation
           for (let i = 1; i <= numParcels; i++) {
             parcelList.push(new Parcel(i));
           }
@@ -3144,26 +3228,28 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             updateParcelListDisplay();
           };
           
-          // Handle image upload
-          document.getElementById('exhibitImageInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file && file.type === 'image/png') {
-              exhibitImage = file;
-              updateImagePreview();
-            } else {
-              alert('Please select a valid PNG image file.');
-              e.target.value = '';
-            }
-          });
+
           
           // Handle generate button
           const modalGenerateBtn = document.getElementById('modalGenerateExhibitABtn');
           if (modalGenerateBtn) {
             console.log('Found modalGenerateExhibitABtn, attaching event handler');
             modalGenerateBtn.onclick = async function() {
-                          await generateExhibitString();
-              addExhibitAToForm();
-              document.getElementById('exhibitAModal').style.display = 'none';
+              // Show loading state
+              modalGenerateBtn.disabled = true;
+              modalGenerateBtn.textContent = 'Generating...';
+              
+              try {
+                await generateExhibitString();
+                addExhibitAToForm();
+                document.getElementById('exhibitAModal').style.display = 'none';
+              } catch (err) {
+                console.error('Error in generate button handler:', err);
+              } finally {
+                // Reset button state
+                modalGenerateBtn.disabled = false;
+                modalGenerateBtn.textContent = 'Generate Exhibit A';
+              }
             };
           } else {
             console.error('modalGenerateExhibitABtn not found in modal');
@@ -3179,10 +3265,30 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 <strong style="color:#b5e0ff;">Parcel ${parcel.parcelNumber}</strong>
                 <button onclick="removeParcel(${index})" class="secondary-btn" style="padding:0.25rem 0.5rem; font-size:0.8rem;">Remove</button>
               </div>
-              <label style="color:#e2e8f0; font-weight:600;">
-                <input type="checkbox" onchange="updateParcelPortion(${index}, this.checked)" ${parcel.isPortion ? 'checked' : ''} style="margin-right:0.5rem;">
-                Is this a portion?
-              </label>
+              
+              <!-- Portion Checkbox (Primary Control) -->
+              <div style="margin-bottom:0.5rem;">
+                <label style="color:#e2e8f0; font-weight:600;">
+                  <input type="checkbox" onchange="updateParcelPortion(${index}, this.checked)" ${parcel.isPortion ? 'checked' : ''} style="margin-right:0.5rem;">
+                  Is this a portion?
+                </label>
+              </div>
+              
+              <!-- Template Type Display (Read-only) -->
+              <div style="margin-bottom:0.5rem;">
+                <label style="color:#e2e8f0; font-weight:600; display:block; margin-bottom:0.25rem;">Template Type:</label>
+                <div style="padding:0.5rem; border-radius:4px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; width:100%;">
+                  ${parcel.isPortion ? 'Portion Template' : 'Normal Parcel Template'}
+                </div>
+              </div>
+              
+              <!-- Template Preview -->
+              <div style="margin-top:0.5rem; padding:0.5rem; background:rgba(26,26,46,0.6); border-radius:4px; font-size:0.9rem;">
+                <strong style="color:#b5e0ff;">Template Preview:</strong>
+                <div style="color:#e2e8f0; margin-top:0.25rem; font-family:monospace; font-size:0.8rem; white-space:pre-wrap;">
+                  ${getFilledTemplatePreview(parcel.isPortion, parcel.parcelNumber)}
+                </div>
+              </div>
             </div>
           `).join('');
         }
@@ -3197,20 +3303,30 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // Function to update parcel portion status
         function updateParcelPortion(index, isPortion) {
           parcelList[index].isPortion = isPortion;
+          // Automatically set template type based on isPortion
+          parcelList[index].templateType = isPortion ? 'portion' : 'normal';
+          updateParcelListDisplay();
           updateExhibitAPreview();
         }
 
-        // Function to update image preview
-        function updateImagePreview() {
-          const preview = document.getElementById('imagePreview');
-          if (exhibitImage) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-              preview.innerHTML = `<img src="${e.target.result}" style="max-width:200px; max-height:150px; border-radius:8px;">`;
-            };
-            reader.readAsDataURL(exhibitImage);
+        // Function to get filled template preview
+        function getFilledTemplatePreview(isPortion, parcelNumber) {
+          if (isPortion) {
+            return `Portion ${parcelNumber}:
+
+This portion of the property is described as follows:
+
+That certain portion of [Legal Description] containing approximately [Acres] acres, more or less, as shown on the survey map attached hereto as Exhibit A-${parcelNumber}.
+
+Said portion is subject to all existing easements, restrictions, and encumbrances of record.`;
           } else {
-            preview.innerHTML = '';
+            return `Parcel ${parcelNumber}:
+
+A parcel of the property described as follows:
+
+That certain parcel of [Legal Description] containing approximately [Acres] acres, more or less, as shown on the survey map attached hereto as Exhibit A-${parcelNumber}.
+
+Said parcel is subject to all existing easements, restrictions, and encumbrances of record.`;
           }
         }
 
@@ -3219,12 +3335,14 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
           const parcelListDisplay = document.getElementById('parcelListDisplay');
           const exhibitStringPreview = document.getElementById('exhibitStringPreview');
           
-          // Update parcel list display
-          parcelListDisplay.innerHTML = parcelList.map(parcel => 
-            `<div style="margin-bottom:0.5rem; padding:0.5rem; background:rgba(26,26,46,0.4); border-radius:4px;">
-              <strong>Parcel ${parcel.parcelNumber}</strong>: ${parcel.isPortion ? 'Portion' : 'Full Parcel'}
-            </div>`
-          ).join('');
+          // Update parcel list display with template information
+          parcelListDisplay.innerHTML = parcelList.map(parcel => {
+            const templateLabel = parcel.isPortion ? 'Portion Template' : 'Normal Parcel Template';
+            
+            return `<div style="margin-bottom:0.5rem; padding:0.5rem; background:rgba(26,26,46,0.4); border-radius:4px;">
+              <strong>Parcel ${parcel.parcelNumber}</strong>: ${templateLabel}
+            </div>`;
+          }).join('');
           
           // Update exhibit string preview (will be populated after backend call)
           exhibitStringPreview.value = exhibitString || 'Exhibit string will be generated when you click "Generate Exhibit A"...';
@@ -3236,24 +3354,37 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             const formData = new FormData();
             formData.append('parcels', JSON.stringify(parcelList));
             
-            if (exhibitImage) {
-              formData.append('image', exhibitImage);
-            }
+            // Add timeout protection (60 seconds for large files)
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
             
             const response = await fetch('/gen_exhibit_a', {
               method: 'POST',
-              body: formData
+              body: formData,
+              signal: controller.signal
             });
             
-            if (!response.ok) throw new Error('Failed to generate exhibit string');
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+              const errorData = await response.json().catch(() => ({}));
+              throw new Error(errorData.error || 'Failed to generate exhibit string');
+            }
             
             const data = await response.json();
             exhibitString = data.exhibit_string || 'Error generating exhibit string';
+            
+            console.log('Received exhibit string length:', exhibitString.length);
+            
             updateExhibitAPreview();
             
           } catch (err) {
             console.error('Error generating exhibit string:', err);
-            exhibitString = 'Error: ' + err.message;
+            if (err.name === 'AbortError') {
+              exhibitString = 'Error: Request timed out (60 seconds). Please try with fewer parcels.';
+            } else {
+              exhibitString = 'Error: ' + err.message;
+            }
             updateExhibitAPreview();
           }
         }

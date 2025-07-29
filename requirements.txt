@@ -1,3 +1,5 @@
 flask==3.0.2
 pandas==2.2.1
-python-pptx 
+python-pptx
+python-docx
+Pillow 

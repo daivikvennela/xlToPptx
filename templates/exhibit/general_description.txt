@@ -5,3 +5,5 @@ GENERAL DESCRIPTION OF PROPERTY
 This exhibit contains the legal description of the property subject to this agreement. The property is located in the County of [County], State of [State], and is more particularly described as follows:
 
 The property consists of the following parcels of land, together with all improvements thereon and all rights, privileges, and appurtenances thereto belonging: 
+
+[Image]
