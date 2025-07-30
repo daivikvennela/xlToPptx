@@ -29,6 +29,9 @@ from docx import Document
 from block_replacer import generate_signature_block, generate_notary_block
 from block_replacer import getSigBlock, getNotaryBlock
 
+# --- Footnote Editor Integration ---
+from footnote_editor import footnote_editor
+
 # --- Template Version 2: Dynamic PPTX Slide Customization ---
 try:
     from slide_utils.shape_mapper import build_map
@@ -2110,6 +2113,222 @@ def test_image_embedding_comprehensive():
         print(f"[TEST ERROR] {str(e)}")
         print(f"[TEST TRACEBACK] {error_traceback}")
         return jsonify({'error': f'Test failed: {str(e)}', 'traceback': error_traceback}), 500
+
+# --- Footnote Editor Routes ---
+
+@app.route('/footnote/extract', methods=['POST'])
+def extract_footnotes():
+    """
+    Extract footnotes from uploaded DOCX file.
+    """
+    try:
+        if 'docx_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['docx_file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not file.filename.lower().endswith('.docx'):
+            return jsonify({'error': 'Please upload a DOCX file'}), 400
+        
+        # Save uploaded file temporarily
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Validate file
+            is_valid, error_msg = footnote_editor.validate_file(temp_path)
+            if not is_valid:
+                return jsonify({'error': error_msg}), 400
+            
+            # Extract footnotes
+            result = footnote_editor.extract_footnotes(temp_path)
+            
+            # Add file info to result
+            result['file_name'] = file.filename
+            result['file_size'] = os.path.getsize(temp_path)
+            
+            return jsonify(result)
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in extract_footnotes: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to extract footnotes: {str(e)}', 'traceback': error_traceback}), 500
+
+@app.route('/footnote/update', methods=['POST'])
+def update_footnotes():
+    """
+    Update footnotes in a DOCX file with edited content.
+    """
+    try:
+        if 'docx_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['docx_file']
+        footnotes_data = request.form.get('footnotes_data')
+        
+        if not footnotes_data:
+            return jsonify({'error': 'No footnotes data provided'}), 400
+        
+        try:
+            footnotes_json = json.loads(footnotes_data)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'Invalid JSON format for footnotes data'}), 400
+        
+        # Save uploaded file temporarily
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Validate file
+            is_valid, error_msg = footnote_editor.validate_file(temp_path)
+            if not is_valid:
+                return jsonify({'error': error_msg}), 400
+            
+            # Update footnotes
+            result = footnote_editor.update_footnotes(temp_path, footnotes_json)
+            
+            if result.get('success', False):
+                # Return the modified file for download
+                output_path = result['output_path']
+                if os.path.exists(output_path):
+                    return send_file(
+                        output_path,
+                        as_attachment=True,
+                        download_name=os.path.basename(output_path),
+                        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    )
+                else:
+                    return jsonify({'error': 'Output file not found'}), 500
+            else:
+                return jsonify(result), 500
+                
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in update_footnotes: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to update footnotes: {str(e)}', 'traceback': error_traceback}), 500
+
+@app.route('/footnote/batch_replace', methods=['POST'])
+def batch_replace_footnotes():
+    """
+    Perform batch search and replace across all footnotes.
+    """
+    try:
+        if 'docx_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['docx_file']
+        search_text = request.form.get('search_text', '').strip()
+        replace_text = request.form.get('replace_text', '').strip()
+        
+        if not search_text:
+            return jsonify({'error': 'Search text is required'}), 400
+        
+        # Save uploaded file temporarily
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Validate file
+            is_valid, error_msg = footnote_editor.validate_file(temp_path)
+            if not is_valid:
+                return jsonify({'error': error_msg}), 400
+            
+            # Perform batch replace
+            result = footnote_editor.batch_replace_footnotes(temp_path, search_text, replace_text)
+            
+            if result.get('success', False) and 'output_path' in result:
+                # Return the modified file for download
+                output_path = result['output_path']
+                if os.path.exists(output_path):
+                    return send_file(
+                        output_path,
+                        as_attachment=True,
+                        download_name=os.path.basename(output_path),
+                        mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    )
+                else:
+                    return jsonify({'error': 'Output file not found'}), 500
+            else:
+                return jsonify(result), 500
+                
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in batch_replace_footnotes: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to perform batch replace: {str(e)}', 'traceback': error_traceback}), 500
+
+@app.route('/footnote/statistics', methods=['POST'])
+def get_footnote_statistics():
+    """
+    Get statistics about footnotes in a document.
+    """
+    try:
+        if 'docx_file' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['docx_file']
+        
+        # Save uploaded file temporarily
+        import tempfile
+        import os
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.docx') as tmp_file:
+            file.save(tmp_file.name)
+            temp_path = tmp_file.name
+        
+        try:
+            # Validate file
+            is_valid, error_msg = footnote_editor.validate_file(temp_path)
+            if not is_valid:
+                return jsonify({'error': error_msg}), 400
+            
+            # Get statistics
+            result = footnote_editor.get_footnote_statistics(temp_path)
+            result['file_name'] = file.filename
+            
+            return jsonify(result)
+            
+        finally:
+            # Clean up temporary file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
+    except Exception as e:
+        import traceback
+        error_traceback = traceback.format_exc()
+        print(f"ERROR in get_footnote_statistics: {str(e)}")
+        print(f"TRACEBACK: {error_traceback}")
+        return jsonify({'error': f'Failed to get statistics: {str(e)}', 'traceback': error_traceback}), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 

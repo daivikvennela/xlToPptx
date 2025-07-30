@@ -660,6 +660,194 @@
                 max-height: none;
             }
         }
+
+        /* Footnote Editor Styles */
+        .file-drop-zone {
+            border: 2px dashed #00bfff;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            background: rgba(26, 26, 46, 0.8);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 2rem;
+        }
+
+        .file-drop-zone:hover,
+        .file-drop-zone.highlight {
+            border-color: #0080ff;
+            background: rgba(0, 191, 255, 0.1);
+            box-shadow: 0 0 30px rgba(0, 191, 255, 0.2);
+        }
+
+        .drop-zone-content {
+            color: #b5e0ff;
+        }
+
+        .drop-zone-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .drop-zone-content h3 {
+            color: #00bfff;
+            margin-bottom: 0.5rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .footnote-item {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid rgba(0, 191, 255, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .footnote-item:hover {
+            border-color: #00bfff;
+            box-shadow: 0 4px 15px rgba(0, 191, 255, 0.2);
+        }
+
+        .footnote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .footnote-id {
+            color: #00bfff;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .copy-btn {
+            background: rgba(0, 191, 255, 0.2);
+            color: #00bfff;
+            border: 1px solid #00bfff;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #00bfff;
+            color: white;
+        }
+
+        .footnote-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 191, 255, 0.3);
+            background: rgba(26, 26, 46, 0.8);
+            color: #e2e8f0;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s ease;
+        }
+
+        .footnote-textarea:focus {
+            outline: none;
+            border-color: #00bfff;
+            box-shadow: 0 0 10px rgba(0, 191, 255, 0.3);
+        }
+
+        .footnote-status {
+            margin-top: 0.5rem;
+            text-align: right;
+        }
+
+        .status-changed {
+            color: #00ff88;
+            font-weight: 600;
+        }
+
+        .status-unchanged {
+            color: #888;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid rgba(0, 191, 255, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            border-color: #00bfff;
+            box-shadow: 0 4px 15px rgba(0, 191, 255, 0.2);
+        }
+
+        .stat-card h3 {
+            color: #00bfff;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .stat-card p {
+            color: #e2e8f0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 10000;
+            max-width: 400px;
+            word-wrap: break-word;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .message.success {
+            background-color: #00ff88;
+            color: #000;
+        }
+
+        .message.error {
+            background-color: #ff6b6b;
+        }
+
+        .message.info {
+            background-color: #00bfff;
+        }
     </style>
 </head>
 <body>
@@ -670,6 +858,7 @@
                 <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li>
                 <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li>
                 <li><a href="#" class="nav-link" data-tab="lease-population">Lease Population</a></li>
+                <li><a href="#" class="nav-link" data-tab="footnote-editor">Footnote Editor</a></li>
                 <li class="nav-item">
                     <a class="nav-link" href="/template_v2" style="color: white; background: purple;">Template Version 2</a>
                 </li>
@@ -1092,6 +1281,66 @@
                     </div>
                     <div id="docxValidationMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
                     <div id="docxSuccessMsg" style="color:#00bfff; margin:1rem 0; display:none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footnote Editor Tab -->
+        <div class="tab-content" id="footnote-editor-tab">
+            <div class="main-content">
+                <h1>Footnote Editor</h1>
+                <p style="color: #b5e0ff; margin-bottom: 2rem;">Extract, edit, and manage footnotes in DOCX files with advanced search and replace capabilities.</p>
+                
+                <!-- File Upload Section -->
+                <div class="file-upload-section">
+                    <div class="file-drop-zone" id="footnoteFileDrop">
+                        <div class="drop-zone-content">
+                            <div class="drop-zone-icon">📄</div>
+                            <h3>Drop your DOCX file here</h3>
+                            <p>or click to browse</p>
+                            <input type="file" id="footnoteFileInput" accept=".docx" style="display: none;">
+                        </div>
+                    </div>
+                    <div id="fileInfo" style="color: #b5e0ff; margin-top: 1rem; font-weight: 600;"></div>
+                    
+                    <div class="action-buttons">
+                        <button type="button" class="submit-btn" id="extractFootnotesBtn">Extract Footnotes</button>
+                        <button type="button" class="secondary-btn" id="getStatsBtn">Get Statistics</button>
+                    </div>
+                </div>
+
+                <!-- Statistics Section -->
+                <div id="footnoteStatsSection" style="display: none; margin: 2rem 0;">
+                    <h3 style="color: #00bfff; margin-bottom: 1rem;">Document Statistics</h3>
+                    <!-- Statistics will be populated here -->
+                </div>
+
+                <!-- Batch Search and Replace Section -->
+                <div class="batch-replace-section" style="margin: 2rem 0; padding: 1.5rem; background: rgba(26,26,46,0.8); border-radius: 12px; border: 1px solid #00bfff;">
+                    <h3 style="color: #00bfff; margin-bottom: 1rem;">Batch Search & Replace</h3>
+                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                        <div style="flex: 1;">
+                            <label for="batchSearchInput" style="color: #b5e0ff; font-weight: 600;">Search for:</label>
+                            <input type="text" id="batchSearchInput" placeholder="Enter text to search..." style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0;">
+                        </div>
+                        <div style="flex: 1;">
+                            <label for="batchReplaceInput" style="color: #b5e0ff; font-weight: 600;">Replace with:</label>
+                            <input type="text" id="batchReplaceInput" placeholder="Enter replacement text..." style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0;">
+                        </div>
+                    </div>
+                    <button type="button" class="submit-btn" id="batchReplaceBtn">Batch Replace</button>
+                </div>
+
+                <!-- Footnotes List Section -->
+                <div id="footnotesList" style="margin: 2rem 0;">
+                    <!-- Individual footnotes will be populated here -->
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons" style="margin: 2rem 0;">
+                    <button type="button" class="submit-btn" id="saveChangesBtn">Save Changes & Download</button>
+                    <button type="button" class="secondary-btn" id="resetChangesBtn">Reset Changes</button>
+                    <button type="button" class="secondary-btn" id="exportJsonBtn">Export as JSON</button>
                 </div>
             </div>
         </div>
@@ -3415,6 +3664,422 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
             div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
           }
         }
+
+        // --- Footnote Editor Tab Content ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // Footnote Editor functionality
+            const footnoteFileDrop = document.getElementById('footnoteFileDrop');
+            const footnoteFileInput = document.getElementById('footnoteFileInput');
+            const extractFootnotesBtn = document.getElementById('extractFootnotesBtn');
+            const getStatsBtn = document.getElementById('getStatsBtn');
+            const footnotesList = document.getElementById('footnotesList');
+            const footnoteStatsSection = document.getElementById('footnoteStatsSection');
+            const batchSearchInput = document.getElementById('batchSearchInput');
+            const batchReplaceInput = document.getElementById('batchReplaceInput');
+            const batchReplaceBtn = document.getElementById('batchReplaceBtn');
+            const saveChangesBtn = document.getElementById('saveChangesBtn');
+            const resetChangesBtn = document.getElementById('resetChangesBtn');
+            const exportJsonBtn = document.getElementById('exportJsonBtn');
+
+            let currentFootnotes = [];
+            let originalFootnotes = [];
+            let currentDocxFile = null;
+
+            // File drop zone functionality
+            if (footnoteFileDrop) {
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    footnoteFileDrop.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    footnoteFileDrop.addEventListener(eventName, highlight, false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    footnoteFileDrop.addEventListener(eventName, unhighlight, false);
+                });
+
+                function highlight(e) {
+                    footnoteFileDrop.classList.add('highlight');
+                }
+
+                function unhighlight(e) {
+                    footnoteFileDrop.classList.remove('highlight');
+                }
+
+                footnoteFileDrop.addEventListener('drop', handleDrop, false);
+
+                function handleDrop(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    handleFiles(files);
+                }
+            }
+
+            // File input change
+            if (footnoteFileInput) {
+                footnoteFileInput.addEventListener('change', function(e) {
+                    handleFiles(e.target.files);
+                });
+            }
+
+            function handleFiles(files) {
+                if (files.length > 0) {
+                    const file = files[0];
+                    if (file.name.toLowerCase().endsWith('.docx')) {
+                        currentDocxFile = file;
+                        updateFileInfo(file);
+                        showMessage('File selected: ' + file.name, 'success');
+                    } else {
+                        showMessage('Please select a DOCX file', 'error');
+                    }
+                }
+            }
+
+            function updateFileInfo(file) {
+                const fileInfo = document.getElementById('fileInfo');
+                if (fileInfo) {
+                    fileInfo.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                }
+            }
+
+            // Extract footnotes
+            if (extractFootnotesBtn) {
+                extractFootnotesBtn.addEventListener('click', async function() {
+                    if (!currentDocxFile) {
+                        showMessage('Please select a DOCX file first', 'error');
+                        return;
+                    }
+
+                    this.disabled = true;
+                    this.textContent = 'Extracting...';
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('docx_file', currentDocxFile);
+
+                        const response = await fetch('/footnote/extract', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            currentFootnotes = data.footnotes || [];
+                            originalFootnotes = JSON.parse(JSON.stringify(currentFootnotes));
+                            displayFootnotes(currentFootnotes);
+                            showMessage(`Successfully extracted ${currentFootnotes.length} footnotes`, 'success');
+                        } else {
+                            showMessage(data.error || 'Failed to extract footnotes', 'error');
+                        }
+                    } catch (error) {
+                        showMessage('Error extracting footnotes: ' + error.message, 'error');
+                    } finally {
+                        this.disabled = false;
+                        this.textContent = 'Extract Footnotes';
+                    }
+                });
+            }
+
+            // Get statistics
+            if (getStatsBtn) {
+                getStatsBtn.addEventListener('click', async function() {
+                    if (!currentDocxFile) {
+                        showMessage('Please select a DOCX file first', 'error');
+                        return;
+                    }
+
+                    this.disabled = true;
+                    this.textContent = 'Getting Stats...';
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('docx_file', currentDocxFile);
+
+                        const response = await fetch('/footnote/statistics', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                            displayStatistics(data);
+                            showMessage('Statistics retrieved successfully', 'success');
+                        } else {
+                            showMessage(data.error || 'Failed to get statistics', 'error');
+                        }
+                    } catch (error) {
+                        showMessage('Error getting statistics: ' + error.message, 'error');
+                    } finally {
+                        this.disabled = false;
+                        this.textContent = 'Get Statistics';
+                    }
+                });
+            }
+
+            // Batch replace
+            if (batchReplaceBtn) {
+                batchReplaceBtn.addEventListener('click', async function() {
+                    if (!currentDocxFile) {
+                        showMessage('Please select a DOCX file first', 'error');
+                        return;
+                    }
+
+                    const searchText = batchSearchInput.value.trim();
+                    const replaceText = batchReplaceInput.value.trim();
+
+                    if (!searchText) {
+                        showMessage('Please enter search text', 'error');
+                        return;
+                    }
+
+                    this.disabled = true;
+                    this.textContent = 'Replacing...';
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('docx_file', currentDocxFile);
+                        formData.append('search_text', searchText);
+                        formData.append('replace_text', replaceText);
+
+                        const response = await fetch('/footnote/batch_replace', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            // Download the modified file
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = currentDocxFile.name.replace('.docx', '_footnotes_edited.docx');
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+
+                            showMessage(`Batch replace completed. ${searchText} replaced with ${replaceText}`, 'success');
+                        } else {
+                            const data = await response.json();
+                            showMessage(data.error || 'Batch replace failed', 'error');
+                        }
+                    } catch (error) {
+                        showMessage('Error performing batch replace: ' + error.message, 'error');
+                    } finally {
+                        this.disabled = false;
+                        this.textContent = 'Batch Replace';
+                    }
+                });
+            }
+
+            // Save changes
+            if (saveChangesBtn) {
+                saveChangesBtn.addEventListener('click', async function() {
+                    if (!currentDocxFile || currentFootnotes.length === 0) {
+                        showMessage('Please extract footnotes first', 'error');
+                        return;
+                    }
+
+                    this.disabled = true;
+                    this.textContent = 'Saving...';
+
+                    try {
+                        const formData = new FormData();
+                        formData.append('docx_file', currentDocxFile);
+                        formData.append('footnotes_data', JSON.stringify(currentFootnotes));
+
+                        const response = await fetch('/footnote/update', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (response.ok) {
+                            // Download the modified file
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = currentDocxFile.name.replace('.docx', '_footnotes_edited.docx');
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(url);
+
+                            showMessage('Changes saved and file downloaded successfully', 'success');
+                        } else {
+                            const data = await response.json();
+                            showMessage(data.error || 'Failed to save changes', 'error');
+                        }
+                    } catch (error) {
+                        showMessage('Error saving changes: ' + error.message, 'error');
+                    } finally {
+                        this.disabled = false;
+                        this.textContent = 'Save Changes & Download';
+                    }
+                });
+            }
+
+            // Reset changes
+            if (resetChangesBtn) {
+                resetChangesBtn.addEventListener('click', function() {
+                    if (originalFootnotes.length > 0) {
+                        currentFootnotes = JSON.parse(JSON.stringify(originalFootnotes));
+                        displayFootnotes(currentFootnotes);
+                        showMessage('Changes reset to original', 'info');
+                    }
+                });
+            }
+
+            // Export JSON
+            if (exportJsonBtn) {
+                exportJsonBtn.addEventListener('click', function() {
+                    if (currentFootnotes.length === 0) {
+                        showMessage('No footnotes to export', 'error');
+                        return;
+                    }
+
+                    const dataStr = JSON.stringify(currentFootnotes, null, 2);
+                    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                    const url = window.URL.createObjectURL(dataBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'footnotes_export.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+
+                    showMessage('Footnotes exported as JSON', 'success');
+                });
+            }
+
+            function displayFootnotes(footnotes) {
+                if (!footnotesList) return;
+
+                footnotesList.innerHTML = '';
+                footnotes.forEach((footnote, index) => {
+                    const footnoteDiv = document.createElement('div');
+                    footnoteDiv.className = 'footnote-item';
+                    footnoteDiv.innerHTML = `
+                        <div class="footnote-header">
+                            <span class="footnote-id">Footnote ${footnote.id}</span>
+                            <button class="copy-btn" onclick="copyText('${index}')">Copy</button>
+                        </div>
+                        <textarea class="footnote-textarea" data-index="${index}" placeholder="Enter footnote text...">${footnote.edited_text || footnote.original_text || ''}</textarea>
+                        <div class="footnote-status">
+                            ${footnote.has_changes ? '<span class="status-changed">Modified</span>' : '<span class="status-unchanged">Unchanged</span>'}
+                        </div>
+                    `;
+
+                    // Add change detection
+                    const textarea = footnoteDiv.querySelector('.footnote-textarea');
+                    textarea.addEventListener('input', function() {
+                        const idx = parseInt(this.dataset.index);
+                        currentFootnotes[idx].edited_text = this.value;
+                        currentFootnotes[idx].has_changes = this.value !== originalFootnotes[idx].original_text;
+                        
+                        const statusSpan = footnoteDiv.querySelector('.footnote-status span');
+                        if (currentFootnotes[idx].has_changes) {
+                            statusSpan.textContent = 'Modified';
+                            statusSpan.className = 'status-changed';
+                        } else {
+                            statusSpan.textContent = 'Unchanged';
+                            statusSpan.className = 'status-unchanged';
+                        }
+                    });
+
+                    footnotesList.appendChild(footnoteDiv);
+                });
+            }
+
+            function displayStatistics(stats) {
+                if (!footnoteStatsSection) return;
+
+                footnoteStatsSection.innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Total Footnotes</h3>
+                            <p>${stats.total_footnotes}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Characters</h3>
+                            <p>${stats.total_characters.toLocaleString()}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Words</h3>
+                            <p>${stats.total_words.toLocaleString()}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Empty Footnotes</h3>
+                            <p>${stats.empty_footnotes}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Avg Characters/Footnote</h3>
+                            <p>${Math.round(stats.average_chars_per_footnote)}</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Avg Words/Footnote</h3>
+                            <p>${Math.round(stats.average_words_per_footnote)}</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            function showMessage(message, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                messageDiv.textContent = message;
+                messageDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 1rem;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 600;
+                    z-index: 10000;
+                    max-width: 400px;
+                    word-wrap: break-word;
+                `;
+
+                if (type === 'success') {
+                    messageDiv.style.backgroundColor = '#00ff88';
+                    messageDiv.style.color = '#000';
+                } else if (type === 'error') {
+                    messageDiv.style.backgroundColor = '#ff6b6b';
+                } else if (type === 'info') {
+                    messageDiv.style.backgroundColor = '#00bfff';
+                }
+
+                document.body.appendChild(messageDiv);
+
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 5000);
+            }
+
+            // Global function for copying text
+            window.copyText = function(index) {
+                const footnote = currentFootnotes[index];
+                const text = footnote.edited_text || footnote.original_text || '';
+                
+                navigator.clipboard.writeText(text).then(() => {
+                    showMessage('Text copied to clipboard', 'success');
+                }).catch(() => {
+                    showMessage('Failed to copy text', 'error');
+                });
+            };
+        });
     </script>
 </body>
 </html> 
