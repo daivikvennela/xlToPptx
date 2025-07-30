@@ -169,6 +169,60 @@ def generate_signature_block(grantor_name, trust_entity_name=None, name=None, ti
                       .replace('[Name]', name or '') \
                       .replace('[Title]', title or '')
 
+def generate_enhanced_signature_block(owner_type, grantor_name=None, trust_entity_name=None, name=None, title=None, state=None, num_signatures=1):
+    """Generate enhanced signature block based on owner type following married_couple_signature model"""
+    template_mapping = {
+        'individual': 'individual_signature_enhanced.txt',
+        'corporation': 'corporation_signature_enhanced.txt', 
+        'llc': 'llc_signature_enhanced.txt',
+        'lp': 'lp_signature_enhanced.txt',
+        'married_couple': 'married_couple_signature_enhanced.txt',
+        'sole_owner_married_couple': 'sole_owner_married_couple_enhanced.txt'
+    }
+    
+    template_file = template_mapping.get(owner_type, 'individual_signature_enhanced.txt')
+    
+    try:
+        template_path = os.path.join('templates', 'sigBlocks', template_file)
+        with open(template_path, 'r', encoding='utf-8') as f:
+            template = f.read()
+    except FileNotFoundError:
+        # Fallback to basic template
+        if owner_type == 'individual':
+            template = load_block_template('individual_signature.txt')
+        else:
+            template = load_block_template('entity_signature.txt')
+    
+    # Replace placeholders based on owner type
+    result = template
+    if grantor_name:
+        result = result.replace('[Grantor Name]', grantor_name)
+    if trust_entity_name:
+        result = result.replace('[Trust/Entity Name]', trust_entity_name)
+    if name:
+        result = result.replace('[Name]', name)
+    if title:
+        result = result.replace('[Title]', title)
+    if state:
+        result = result.replace('[State]', state)
+    
+    # Handle multiple signatures for certain types
+    if owner_type == 'married_couple' and num_signatures == 2:
+        # The template already has placeholders for husband and wife
+        pass
+    elif num_signatures > 1 and owner_type not in ['married_couple', 'sole_owner_married_couple']:
+        # Add additional signature lines for other types
+        signature_lines = []
+        for i in range(num_signatures):
+            signature_lines.append(f"\nBy:________________________\n[Name {i+1}]\n[Title {i+1}]")
+        
+        # Replace the single signature block with multiple
+        single_sig_pattern = "By:________________________\n[Name]\n[Title]"
+        if single_sig_pattern in result:
+            result = result.replace(single_sig_pattern, "\n".join(signature_lines))
+    
+    return result
+
 def generate_notary_block(state, county, name_of_individuals, type_of_authority=None, instrument_for=None, block_type='individual'):
     if block_type == 'individual':
         template = load_block_template('individual_notary.txt')
@@ -182,6 +236,79 @@ def generate_notary_block(state, county, name_of_individuals, type_of_authority=
                       .replace('[NAME(S) OF INDIVIDUAL(S)]', name_of_individuals or '') \
                       .replace('[TYPE OF AUTHORITY]', type_of_authority or '') \
                       .replace('[NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR]', instrument_for or '')
+
+def generate_enhanced_combined_block(owner_type, grantor_name=None, trust_entity_name=None, name=None, title=None, 
+                                    state=None, county=None, name_of_individuals=None, type_of_authority=None, 
+                                    instrument_for=None, num_signatures=1, include_signature=True, include_notary=True, 
+                                    embed_notary_in_signature=True):
+    """Generate combined signature and notary block with embedding logic"""
+    result = {}
+    
+    # Generate signature block
+    if include_signature:
+        signature_block = generate_enhanced_signature_block(
+            owner_type, grantor_name, trust_entity_name, name, title, state, num_signatures
+        )
+        result['signature_block'] = signature_block
+    
+    # Generate notary block
+    if include_notary:
+        block_type = 'individual' if owner_type == 'individual' else 'entity'
+        notary_block = generate_notary_block(state, county, name_of_individuals, type_of_authority, instrument_for, block_type)
+        result['notary_block'] = notary_block
+    
+    # Generate combined block
+    if include_signature and include_notary and embed_notary_in_signature:
+        # Embed notary block within signature block
+        combined_block = signature_block.replace('[Notary Block]', notary_block)
+        result['combined_block'] = combined_block
+    elif include_signature and include_notary and not embed_notary_in_signature:
+        # Show blocks separately
+        result['combined_block'] = f"{signature_block}\n\n\n{notary_block}"
+    elif include_signature:
+        # Remove [Notary Block] placeholder
+        result['combined_block'] = signature_block.replace('[Notary Block]', '').strip()
+    elif include_notary:
+        result['combined_block'] = notary_block
+    
+    # Generate step breakdown
+    step_breakdown = []
+    if include_notary:
+        step_breakdown.append("STEP 1: Notary Block Configuration")
+        step_breakdown.append(f"  - State: {state or 'Not specified'}")
+        step_breakdown.append(f"  - County: {county or 'Not specified'}")
+        step_breakdown.append(f"  - Individual(s): {name_of_individuals or 'Not specified'}")
+        if type_of_authority:
+            step_breakdown.append(f"  - Authority: {type_of_authority}")
+        if instrument_for:
+            step_breakdown.append(f"  - Instrument For: {instrument_for}")
+        step_breakdown.append("")
+    
+    if include_signature:
+        step_breakdown.append("STEP 2: Signature Block Configuration")
+        step_breakdown.append(f"  - Owner Type: {owner_type.replace('_', ' ').title()}")
+        step_breakdown.append(f"  - Number of Signatures: {num_signatures}")
+        if grantor_name:
+            step_breakdown.append(f"  - Grantor Name: {grantor_name}")
+        if trust_entity_name:
+            step_breakdown.append(f"  - Trust/Entity Name: {trust_entity_name}")
+        if name:
+            step_breakdown.append(f"  - Signatory Name: {name}")
+        if title:
+            step_breakdown.append(f"  - Title: {title}")
+        step_breakdown.append("")
+    
+    if embed_notary_in_signature and include_signature and include_notary:
+        step_breakdown.append("EMBEDDING: Notary Block embedded within Signature Block")
+    elif include_signature and include_notary:
+        step_breakdown.append("LAYOUT: Signature and Notary Blocks displayed separately")
+    
+    result['step_breakdown'] = "\n".join(step_breakdown)
+    result['embed_notary_in_signature'] = embed_notary_in_signature
+    result['include_signature'] = include_signature
+    result['include_notary'] = include_notary
+    
+    return result
 
 def get_all_block_previews(grantor_name, trust_entity_name, name, title, state, county, name_of_individuals, type_of_authority, instrument_for):
     preview = {

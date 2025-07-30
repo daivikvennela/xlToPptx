@@ -27,7 +27,7 @@ from block_replacer import get_all_block_previews
 from block_replacer import replace_signature_and_notary_blocks
 from docx import Document
 from block_replacer import generate_signature_block, generate_notary_block
-from block_replacer import getSigBlock, getNotaryBlock
+from block_replacer import getSigBlock, getNotaryBlock, generate_enhanced_combined_block
 
 # --- Footnote Editor Integration ---
 from footnote_editor import footnote_editor
@@ -1886,6 +1886,51 @@ def block_preview():
     )
     return jsonify({'preview': preview})
 
+@app.route('/get_dynamic_block_preview', methods=['POST'])
+def get_dynamic_block_preview():
+    """Enhanced endpoint for dynamic signature/notary block preview with embedding logic"""
+    try:
+        data = request.get_json()
+        
+        # Extract form data
+        owner_type = data.get('owner_type', 'individual')
+        num_signatures = data.get('num_signatures', 1)
+        state = data.get('state', '')
+        county = data.get('county', '')
+        name_of_individuals = data.get('name_of_individuals', '')
+        type_of_authority = data.get('type_of_authority', '')
+        instrument_for = data.get('instrument_for', '')
+        grantor_name = data.get('grantor_name', '')
+        trust_entity_name = data.get('trust_entity_name', '')
+        name = data.get('name', '')
+        title = data.get('title', '')
+        include_signature = data.get('include_signature', True)
+        include_notary = data.get('include_notary', True)
+        embed_notary_in_signature = data.get('embed_notary_in_signature', True)
+        
+        # Generate enhanced combined block
+        result = generate_enhanced_combined_block(
+            owner_type=owner_type,
+            grantor_name=grantor_name,
+            trust_entity_name=trust_entity_name,
+            name=name,
+            title=title,
+            state=state,
+            county=county,
+            name_of_individuals=name_of_individuals,
+            type_of_authority=type_of_authority,
+            instrument_for=instrument_for,
+            num_signatures=num_signatures,
+            include_signature=include_signature,
+            include_notary=include_notary,
+            embed_notary_in_signature=embed_notary_in_signature
+        )
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/get_party_block_templates', methods=['POST'])
 def get_party_block_templates():
     data = request.get_json()
@@ -2331,4 +2376,6 @@ def get_footnote_statistics():
         return jsonify({'error': f'Failed to get statistics: {str(e)}', 'traceback': error_traceback}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    import os
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=True, port=port) 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Block Test</title>
+    <title>Enhanced [sig/notary block] Builder</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -12,13 +12,81 @@
             color: #e2e8f0;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
+        
+        /* Header Section */
+        .header-section {
+            margin-bottom: 2rem;
+        }
+        .parcels-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .parcels-label {
+            color: #b5e0ff;
+            font-weight: 600;
+        }
+        .parcels-input {
+            padding: 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #00bfff;
+            background: rgba(26,26,46,0.8);
+            color: #e2e8f0;
+            width: 80px;
+        }
+        
+        /* Horizontal Bar */
+        .separator-bar {
+            height: 2px;
+            background: linear-gradient(90deg, #00bfff, #1a1a2e);
+            margin: 1.5rem 0;
+            border-radius: 1px;
+        }
+        
+        /* Step Indicators */
+        .step-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            background: rgba(26,26,46,0.6);
+            border: 1px solid #444;
+            transition: all 0.3s ease;
+        }
+        .step.active {
+            background: rgba(0,191,255,0.2);
+            border-color: #00bfff;
+            color: #00bfff;
+        }
+        .step-number {
+            background: #00bfff;
+            color: #1a1a2e;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.875rem;
+        }
+        
+        /* Split Layout */
         .split-layout {
             display: flex;
             gap: 2rem;
-            min-height: 400px;
+            min-height: 600px;
         }
         .builder-panel, .preview-panel {
             flex: 1;
@@ -27,22 +95,60 @@
             padding: 1.5rem;
             border: 1px solid #00bfff;
         }
+        .preview-panel {
+            background: rgba(26,26,46,0.9);
+        }
+        
+        /* Form Styling */
         .form-group {
             margin-bottom: 1rem;
+        }
+        .form-section {
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            background: rgba(0,0,0,0.2);
+        }
+        .section-title {
+            color: #00bfff;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
         }
         label {
             color: #b5e0ff;
             display: block;
             margin-bottom: 0.5rem;
+            font-weight: 500;
         }
-        select, input {
+        select, input[type="text"], input[type="number"] {
             width: 100%;
             padding: 0.75rem;
             border-radius: 6px;
             border: 1px solid #00bfff;
             background: rgba(26,26,46,0.8);
             color: #e2e8f0;
+            font-size: 0.95rem;
         }
+        input[type="checkbox"] {
+            margin-right: 0.5rem;
+            transform: scale(1.2);
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+        .checkbox-label:hover {
+            background: rgba(0,191,255,0.1);
+        }
+        
+        /* Button Styling */
         button {
             background: #00bfff;
             color: #1a1a2e;
@@ -52,103 +158,294 @@
             cursor: pointer;
             margin-right: 0.5rem;
             font-weight: 600;
+            transition: all 0.3s ease;
         }
+        button:hover {
+            background: #0099cc;
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background: #444;
+            color: #e2e8f0;
+        }
+        .btn-secondary:hover {
+            background: #555;
+        }
+        
+        /* Preview Styling */
         .preview-content {
             background: #181830;
             color: #b5e0ff;
-            padding: 1rem;
+            padding: 1.5rem;
             border-radius: 8px;
-            min-height: 300px;
-            font-family: monospace;
+            min-height: 400px;
+            font-family: 'Courier New', monospace;
             white-space: pre-wrap;
             overflow-y: auto;
             border: 1px solid #00bfff;
+            line-height: 1.6;
+        }
+        .preview-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .live-indicator {
+            color: #00ff00;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+            margin-left: 0.5rem;
+        }
+        .toggle-input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        .toggle-input:checked + .toggle-slider {
+            background-color: #00bfff;
+        }
+        .toggle-input:checked + .toggle-slider:before {
+            transform: translateX(26px);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Dynamic [sig/notary block] Builder Test</h1>
+        <h1>Enhanced [sig/notary block] Builder</h1>
         
+        <!-- Header Section with Number of Parcels -->
+        <div class="header-section">
+            <div class="parcels-section">
+                <span class="parcels-label">Number of Parcels:</span>
+                <input type="number" class="parcels-input" value="1" min="1" max="100">
+            </div>
+            
+            <!-- Horizontal Bar -->
+            <div class="separator-bar"></div>
+        </div>
+        
+        <!-- Step Indicators -->
+        <div class="step-indicators">
+            <div class="step active" id="step1">
+                <div class="step-number">1</div>
+                <span>Notary Block Generation</span>
+            </div>
+            <div class="step" id="step2">
+                <div class="step-number">2</div>
+                <span>Dynamic Signature Block</span>
+            </div>
+        </div>
+        
+        <!-- Split Screen Layout -->
         <div class="split-layout">
-            <!-- Builder Panel -->
+            <!-- Right Panel: Configuration Controls -->
             <div class="builder-panel">
                 <h2>Block Configuration</h2>
                 
-                <div class="form-group">
-                    <label>Owner Type:</label>
-                    <select id="dynamicOwnerType">
-                        <option value="individual">Individual</option>
-                        <option value="corporation">Corporation</option>
-                        <option value="llc">LLC</option>
-                        <option value="lp">LP</option>
-                        <option value="married_couple">Married Couple</option>
-                        <option value="sole_owner_married_couple">Sole Owner Married Couple</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label>Number of Signatures:</label>
-                    <input type="number" id="dynamicNumSignatures" value="1" min="1" max="10">
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="includeSignatureBlock" checked>
-                        Include Signature Block
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="includeNotaryBlock" checked>
-                        Include Notary Block
-                    </label>
-                </div>
-
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="embedNotaryInSignature" checked>
-                        Embed [Notary Block] in Signature
-                    </label>
-                </div>
-
-                <div style="border-top: 1px solid #00bfff; padding-top: 1rem; margin-top: 1rem;">
-                    <h3>Notary Configuration</h3>
+                <!-- Step 1: Notary Block Configuration -->
+                <div class="form-section" id="notarySection">
+                    <div class="section-title">Step 1: Notary Block Configuration</div>
                     
                     <div class="form-group">
                         <label>State:</label>
-                        <input type="text" id="dynamicState" placeholder="Enter state">
+                        <input type="text" id="dynamicState" placeholder="e.g., Texas" oninput="autoUpdatePreview()">
                     </div>
 
                     <div class="form-group">
                         <label>County:</label>
-                        <input type="text" id="dynamicCounty" placeholder="Enter county">
+                        <input type="text" id="dynamicCounty" placeholder="e.g., Harris" oninput="autoUpdatePreview()">
                     </div>
 
                     <div class="form-group">
                         <label>Name(s) of Individual(s):</label>
-                        <input type="text" id="dynamicNameOfIndividuals" placeholder="Enter individual names">
+                        <input type="text" id="dynamicNameOfIndividuals" placeholder="e.g., John Doe and Jane Doe" oninput="autoUpdatePreview()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Type of Authority (for entities):</label>
+                        <input type="text" id="dynamicTypeOfAuthority" placeholder="e.g., President" oninput="autoUpdatePreview()">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Instrument For (for entities):</label>
+                        <input type="text" id="dynamicInstrumentFor" placeholder="Entity/Trust name" oninput="autoUpdatePreview()">
                     </div>
                 </div>
 
-                <div style="margin-top: 1.5rem;">
+                <!-- Step 2: Signature Block Configuration -->
+                <div class="form-section" id="signatureSection">
+                    <div class="section-title">Step 2: Dynamic Signature Block</div>
+                    
+                    <div class="form-group">
+                        <label>Owner Type:</label>
+                        <select id="dynamicOwnerType" onchange="autoUpdatePreview()">
+                            <option value="individual">Individual</option>
+                            <option value="corporation">Corporation</option>
+                            <option value="llc">LLC</option>
+                            <option value="lp">Limited Partnership</option>
+                            <option value="married_couple">Married Couple</option>
+                            <option value="sole_owner_married_couple">Sole Owner Married Couple</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Number of Signatures:</label>
+                        <input type="number" id="dynamicNumSignatures" value="1" min="1" max="10" onchange="autoUpdatePreview()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Grantor Name:</label>
+                        <input type="text" id="dynamicGrantorName" placeholder="e.g., John and Jane Doe" oninput="autoUpdatePreview()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Trust/Entity Name (if applicable):</label>
+                        <input type="text" id="dynamicTrustEntityName" placeholder="e.g., ABC Corporation" oninput="autoUpdatePreview()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Name:</label>
+                        <input type="text" id="dynamicName" placeholder="e.g., John Doe" oninput="autoUpdatePreview()">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input type="text" id="dynamicTitle" placeholder="e.g., President" oninput="autoUpdatePreview()">
+                    </div>
+                </div>
+
+                <!-- Control Options -->
+                <div class="form-section">
+                    <div class="section-title">Block Control Options</div>
+                    
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="includeSignatureBlock" checked onchange="autoUpdatePreview()">
+                            Include Signature Block
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="includeNotaryBlock" checked onchange="autoUpdatePreview()">
+                            Include Notary Block
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="embedNotaryInSignature" checked onchange="autoUpdatePreview()">
+                            Embed [Notary Block] within Signature Block
+                            <span class="toggle-switch">
+                                <input type="checkbox" class="toggle-input" id="embedToggle" checked onchange="syncEmbedControls()">
+                                <span class="toggle-slider"></span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="margin-top: 1.5rem; text-align: center;">
                     <button onclick="generateDynamicBlockPreview()">Generate Preview</button>
+                    <button class="btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
+                    <button class="btn-secondary" onclick="saveForMainSystem()">Save for Main System</button>
                 </div>
             </div>
 
-            <!-- Preview Panel -->
+            <!-- Left Panel: Live Preview -->
             <div class="preview-panel">
-                <h2>[sig/notary block] Preview</h2>
+                <div class="preview-header">
+                    <h2>[sig/notary block] Preview</h2>
+                    <div class="live-indicator">
+                        <div class="live-dot"></div>
+                        Live Preview
+                    </div>
+                </div>
                 
                 <div id="dynamicBlockPreview" class="preview-content">
-                    <div style="color:#666; text-align:center; padding:2rem;">Click "Generate Preview" to see the combined block...</div>
+                    <div style="color:#666; text-align:center; padding:2rem;">
+                        Configure your blocks using the controls →<br/>
+                        Preview will update automatically as you type
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
+        let debounceTimer;
+        let currentStep = 1;
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial step
+            setActiveStep(1);
+            // Generate initial preview
+            setTimeout(generateDynamicBlockPreview, 500);
+        });
+
+        function setActiveStep(step) {
+            currentStep = step;
+            document.getElementById('step1').classList.toggle('active', step === 1);
+            document.getElementById('step2').classList.toggle('active', step === 2);
+        }
+
+        function autoUpdatePreview() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(generateDynamicBlockPreview, 300);
+        }
+
+        function syncEmbedControls() {
+            const embedToggle = document.getElementById('embedToggle');
+            const embedCheckbox = document.getElementById('embedNotaryInSignature');
+            embedCheckbox.checked = embedToggle.checked;
+            autoUpdatePreview();
+        }
+
         async function generateDynamicBlockPreview() {
             const previewContent = document.getElementById('dynamicBlockPreview');
             previewContent.innerHTML = '<div style="color:#666; text-align:center; padding:2rem;">Generating preview...</div>';
@@ -156,10 +453,16 @@
             try {
                 const formData = {
                     owner_type: document.getElementById('dynamicOwnerType').value,
-                    num_signatures: parseInt(document.getElementById('dynamicNumSignatures').value),
+                    num_signatures: parseInt(document.getElementById('dynamicNumSignatures').value) || 1,
                     state: document.getElementById('dynamicState').value,
                     county: document.getElementById('dynamicCounty').value,
                     name_of_individuals: document.getElementById('dynamicNameOfIndividuals').value,
+                    type_of_authority: document.getElementById('dynamicTypeOfAuthority').value,
+                    instrument_for: document.getElementById('dynamicInstrumentFor').value,
+                    grantor_name: document.getElementById('dynamicGrantorName').value,
+                    trust_entity_name: document.getElementById('dynamicTrustEntityName').value,
+                    name: document.getElementById('dynamicName').value,
+                    title: document.getElementById('dynamicTitle').value,
                     include_signature: document.getElementById('includeSignatureBlock').checked,
                     include_notary: document.getElementById('includeNotaryBlock').checked,
                     embed_notary_in_signature: document.getElementById('embedNotaryInSignature').checked
@@ -180,8 +483,18 @@
                     return;
                 }
 
-                let previewText = '';
+                displayPreviewBlocks(data, previewContent);
                 
+            } catch (error) {
+                previewContent.innerHTML = `<div style="color:#ff6b6b;">Error generating preview: ${error.message}</div>`;
+            }
+        }
+
+        function displayPreviewBlocks(data, previewContent) {
+            let previewText = '';
+            
+            // Show individual blocks when not embedded
+            if (!data.embed_notary_in_signature) {
                 if (data.include_signature && data.signature_block) {
                     previewText += '=== SIGNATURE BLOCK ===\n';
                     previewText += data.signature_block + '\n\n';
@@ -191,17 +504,99 @@
                     previewText += '=== NOTARY BLOCK ===\n';
                     previewText += data.notary_block + '\n\n';
                 }
+            }
+            
+            // Show combined block
+            if (data.combined_block) {
+                previewText += '=== [sig/notary block] COMBINED ===\n';
+                previewText += data.combined_block + '\n\n';
+            }
+            
+            // Show step-by-step breakdown
+            if (data.step_breakdown) {
+                previewText += '=== STEP-BY-STEP BREAKDOWN ===\n';
+                previewText += data.step_breakdown;
+            }
+            
+            previewContent.innerHTML = `<pre style="margin:0; color:#b5e0ff; line-height: 1.6;">${previewText || 'No content to preview. Please configure your blocks.'}</pre>`;
+        }
+
+        async function copyToClipboard() {
+            try {
+                const previewContent = document.getElementById('dynamicBlockPreview');
+                const textContent = previewContent.textContent || previewContent.innerText;
                 
-                if (data.combined_block) {
-                    previewText += '=== [sig/notary block] ===\n';
-                    previewText += data.combined_block;
-                }
+                await navigator.clipboard.writeText(textContent);
                 
-                previewContent.innerHTML = `<pre style="margin:0; color:#b5e0ff;">${previewText}</pre>`;
+                // Show success feedback
+                const originalText = event.target.textContent;
+                event.target.textContent = 'Copied!';
+                event.target.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    event.target.textContent = originalText;
+                    event.target.style.background = '#444';
+                }, 2000);
+                
             } catch (error) {
-                previewContent.innerHTML = `<div style="color:#ff6b6b;">Error generating preview: ${error.message}</div>`;
+                alert('Failed to copy to clipboard: ' + error.message);
             }
         }
+
+        async function saveForMainSystem() {
+            try {
+                const formData = {
+                    owner_type: document.getElementById('dynamicOwnerType').value,
+                    num_signatures: parseInt(document.getElementById('dynamicNumSignatures').value) || 1,
+                    state: document.getElementById('dynamicState').value,
+                    county: document.getElementById('dynamicCounty').value,
+                    name_of_individuals: document.getElementById('dynamicNameOfIndividuals').value,
+                    type_of_authority: document.getElementById('dynamicTypeOfAuthority').value,
+                    instrument_for: document.getElementById('dynamicInstrumentFor').value,
+                    grantor_name: document.getElementById('dynamicGrantorName').value,
+                    trust_entity_name: document.getElementById('dynamicTrustEntityName').value,
+                    name: document.getElementById('dynamicName').value,
+                    title: document.getElementById('dynamicTitle').value,
+                    include_signature: document.getElementById('includeSignatureBlock').checked,
+                    include_notary: document.getElementById('includeNotaryBlock').checked,
+                    embed_notary_in_signature: document.getElementById('embedNotaryInSignature').checked
+                };
+
+                // Store in localStorage for main system integration
+                localStorage.setItem('enhancedSigNotaryBlock', JSON.stringify(formData));
+                localStorage.setItem('enhancedSigNotaryBlockTimestamp', new Date().toISOString());
+                
+                // Show success feedback
+                const originalText = event.target.textContent;
+                event.target.textContent = 'Saved!';
+                event.target.style.background = '#28a745';
+                
+                setTimeout(() => {
+                    event.target.textContent = originalText;
+                    event.target.style.background = '#444';
+                }, 2000);
+                
+                console.log('Configuration saved for main system integration');
+                
+            } catch (error) {
+                alert('Failed to save configuration: ' + error.message);
+            }
+        }
+
+        // Step navigation functions
+        function goToStep(step) {
+            setActiveStep(step);
+            
+            if (step === 1) {
+                document.getElementById('notarySection').scrollIntoView({ behavior: 'smooth' });
+            } else if (step === 2) {
+                document.getElementById('signatureSection').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // Add click handlers for step indicators
+        document.getElementById('step1').addEventListener('click', () => goToStep(1));
+        document.getElementById('step2').addEventListener('click', () => goToStep(2));
     </script>
 </body>
 </html> 
