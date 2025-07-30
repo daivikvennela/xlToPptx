@@ -1227,6 +1227,7 @@
                 </div>
                 <div id="inputMethodPaste" style="display:none;">
                     <form id="pasteTableForm" class="upload-form" autocomplete="off">
+                        <!-- Owner Type and Number of Signatures - DISABLED FOR NOW
                         <div style="display:flex; gap:1rem; margin-bottom:1rem;">
                             <div style="flex:2;">
                                 <label for="ownerTypeInput" style="color:#00bfff; font-weight:600;">Owner Type</label>
@@ -1237,9 +1238,12 @@
                                 <input type="number" id="numSignaturesInput" min="1" value="1" style="width:100%; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
                             </div>
                         </div>
+                        -->
                         <textarea id="pasteTableTextarea" placeholder="Paste your table here (tab-separated, as from Excel/Sheets)" style="width:100%; min-height:180px; margin-bottom:1rem; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; padding:1rem;"></textarea>
                         <button type="submit" class="submit-btn">Parse Table</button>
+                        <!-- Show Owner/Signature Info - DISABLED FOR NOW
                         <button type="button" class="secondary-btn" id="showOwnerSigPopupBtn" style="margin-left:1rem;">Show Owner/Signature Info</button>
+                        -->
                     </form>
                     <div id="pasteParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
                     <div id="pastePreviewSection" style="display:none; margin-top:1rem;">
@@ -3168,6 +3172,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             };
         };
 
+        // Show Owner/Signature Info Button Handler - DISABLED FOR NOW
+        /*
         document.getElementById('showOwnerSigPopupBtn').onclick = function() {
             const ownerType = document.getElementById('ownerTypeInput').value.trim();
             const numSignatures = parseInt(document.getElementById('numSignaturesInput').value, 10) || 1;
@@ -3188,6 +3194,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 navigator.clipboard.writeText(text);
             };
         };
+        */
 
         // After the line that adds the Fill Signature and Notary Block button:
         document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;">Quick Fill Signature Block</button>');
