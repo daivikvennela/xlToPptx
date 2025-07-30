@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nested Signature/Notary Block Builder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 191, 255, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 191, 255, 0.3);
+        }
+
+        .header h1 {
+            color: #00bfff;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #b5e0ff;
+            font-size: 1.1rem;
+        }
+
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .builder-panel {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid rgba(0, 191, 255, 0.3);
+        }
+
+        .preview-panel {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid rgba(0, 191, 255, 0.3);
+        }
+
+        .panel-title {
+            color: #00bfff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: #b5e0ff;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #00bfff;
+            background: rgba(26, 26, 46, 0.8);
+            color: #e2e8f0;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: #00bfff;
+            box-shadow: 0 0 0 3px rgba(0, 191, 255, 0.2);
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #2a2a4a;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #e2e8f0;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #00bfff;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .toggle-label {
+            color: #b5e0ff;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .preview-content {
+            background: rgba(24, 24, 48, 0.8);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 1px solid rgba(0, 191, 255, 0.2);
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .preview-header {
+            color: #00bfff;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00bfff 0%, #0080ff 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0080ff 0%, #0066cc 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 191, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(181, 224, 255, 0.1);
+            color: #b5e0ff;
+            border: 1px solid rgba(181, 224, 255, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(181, 224, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00bfff, transparent);
+            margin: 25px 0;
+        }
+
+        .loading {
+            text-align: center;
+            color: #b5e0ff;
+            font-style: italic;
+        }
+
+        .error {
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .split-layout {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Nested Signature/Notary Block Builder</h1>
+            <p>Create custom signature and notary blocks with dynamic preview</p>
+        </div>
+
+        <div class="split-layout">
+            <!-- Builder Panel -->
+            <div class="builder-panel">
+                <h2 class="panel-title">Block Builder</h2>
+                
+                <!-- Signature Block Section -->
+                <div class="form-group">
+                    <label class="form-label">Owner Type</label>
+                    <select id="ownerType" class="form-select">
+                        <option value="individual">Individual</option>
+                        <option value="corporation">Corporation</option>
+                        <option value="llc">LLC</option>
+                        <option value="lp">LP</option>
+                        <option value="married_couple">Married Couple</option>
+                        <option value="sole_owner_married_couple">Sole Owner Married Couple</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Number of Signatures</label>
+                    <input type="number" id="numSignatures" class="form-input" value="1" min="1" max="10">
+                </div>
+
+                <!-- Toggle Switches -->
+                <div class="toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="includeSignature" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">Include Signature Block</span>
+                </div>
+
+                <div class="toggle-group">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="includeNotary" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <span class="toggle-label">Include Notary Block</span>
+                </div>
+
+                <div class="section-divider"></div>
+
+                <!-- Notary Block Section -->
+                <div class="form-group">
+                    <label class="form-label">State</label>
+                    <input type="text" id="state" class="form-input" placeholder="Enter state">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">County</label>
+                    <input type="text" id="county" class="form-input" placeholder="Enter county">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Name(s) of Individual(s)</label>
+                    <input type="text" id="nameOfIndividuals" class="form-input" placeholder="Enter individual names">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Type of Authority (for entities)</label>
+                    <input type="text" id="typeOfAuthority" class="form-input" placeholder="Enter authority type">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Instrument For</label>
+                    <input type="text" id="instrumentFor" class="form-input" placeholder="Enter instrument details">
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="generatePreview()">Generate Preview</button>
+                    <button class="btn btn-secondary" onclick="generateFinalBlock()">Generate Final Block</button>
+                </div>
+            </div>
+
+            <!-- Preview Panel -->
+            <div class="preview-panel">
+                <h2 class="panel-title">[sig/notary block] Preview</h2>
+                
+                <div id="previewContent" class="preview-content">
+                    <div class="loading">Click "Generate Preview" to see the combined block...</div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="copyToClipboard()">Copy to Clipboard</button>
+                    <button class="btn btn-secondary" onclick="useInDocument()">Use in Document</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentPreview = null;
+
+        // Load available owner types on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch('/get_available_owner_types');
+                const data = await response.json();
+                
+                if (data.owner_types) {
+                    const ownerTypeSelect = document.getElementById('ownerType');
+                    ownerTypeSelect.innerHTML = '';
+                    
+                    data.owner_types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type;
+                        option.textContent = type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
+                        ownerTypeSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading owner types:', error);
+            }
+        });
+
+        async function generatePreview() {
+            const previewContent = document.getElementById('previewContent');
+            previewContent.innerHTML = '<div class="loading">Generating preview...</div>';
+
+            try {
+                const formData = getFormData();
+                const response = await fetch('/get_nested_block_preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    previewContent.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                    return;
+                }
+
+                currentPreview = data;
+                displayPreview(data);
+            } catch (error) {
+                previewContent.innerHTML = `<div class="error">Error generating preview: ${error.message}</div>`;
+            }
+        }
+
+        function getFormData() {
+            return {
+                owner_type: document.getElementById('ownerType').value,
+                num_signatures: parseInt(document.getElementById('numSignatures').value),
+                state: document.getElementById('state').value,
+                county: document.getElementById('county').value,
+                name_of_individuals: document.getElementById('nameOfIndividuals').value,
+                type_of_authority: document.getElementById('typeOfAuthority').value,
+                instrument_for: document.getElementById('instrumentFor').value,
+                include_signature: document.getElementById('includeSignature').checked,
+                include_notary: document.getElementById('includeNotary').checked
+            };
+        }
+
+        function displayPreview(data) {
+            const previewContent = document.getElementById('previewContent');
+            
+            let previewText = '';
+            
+            if (data.include_signature && data.signature_block) {
+                previewText += '=== SIGNATURE BLOCK ===\n';
+                previewText += data.signature_block + '\n\n';
+            }
+            
+            if (data.include_notary && data.notary_block) {
+                previewText += '=== NOTARY BLOCK ===\n';
+                previewText += data.notary_block + '\n\n';
+            }
+            
+            if (data.combined_block) {
+                previewText += '=== COMBINED BLOCK ===\n';
+                previewText += data.combined_block;
+            }
+            
+            previewContent.textContent = previewText;
+        }
+
+        async function generateFinalBlock() {
+            try {
+                const formData = getFormData();
+                const response = await fetch('/generate_nested_block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+
+                // Store the generated block for use in main document
+                localStorage.setItem('nestedSignatureBlock', data.nested_block);
+                alert('Nested block generated successfully! You can now use it in your main document.');
+                
+            } catch (error) {
+                alert(`Error generating final block: ${error.message}`);
+            }
+        }
+
+        function copyToClipboard() {
+            const previewContent = document.getElementById('previewContent');
+            const text = previewContent.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Preview copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy to clipboard');
+            });
+        }
+
+        function useInDocument() {
+            if (currentPreview && currentPreview.combined_block) {
+                // Store the combined block for use in the main document
+                localStorage.setItem('nestedSignatureBlock', currentPreview.combined_block);
+                alert('Block ready for use in main document!');
+            } else {
+                alert('Please generate a preview first.');
+            }
+        }
+
+        // Auto-generate preview when form changes
+        const formInputs = document.querySelectorAll('.form-input, .form-select, input[type="checkbox"]');
+        formInputs.forEach(input => {
+            input.addEventListener('change', () => {
+                // Debounce the preview generation
+                clearTimeout(window.previewTimeout);
+                window.previewTimeout = setTimeout(generatePreview, 500);
+            });
+        });
+    </script>
+</body>
+</html> 

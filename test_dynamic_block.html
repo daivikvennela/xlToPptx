@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Block Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1a1a2e;
+            color: #e2e8f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .split-layout {
+            display: flex;
+            gap: 2rem;
+            min-height: 400px;
+        }
+        .builder-panel, .preview-panel {
+            flex: 1;
+            background: rgba(26,26,46,0.8);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid #00bfff;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            color: #b5e0ff;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        select, input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #00bfff;
+            background: rgba(26,26,46,0.8);
+            color: #e2e8f0;
+        }
+        button {
+            background: #00bfff;
+            color: #1a1a2e;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            font-weight: 600;
+        }
+        .preview-content {
+            background: #181830;
+            color: #b5e0ff;
+            padding: 1rem;
+            border-radius: 8px;
+            min-height: 300px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            border: 1px solid #00bfff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Dynamic [sig/notary block] Builder Test</h1>
+        
+        <div class="split-layout">
+            <!-- Builder Panel -->
+            <div class="builder-panel">
+                <h2>Block Configuration</h2>
+                
+                <div class="form-group">
+                    <label>Owner Type:</label>
+                    <select id="dynamicOwnerType">
+                        <option value="individual">Individual</option>
+                        <option value="corporation">Corporation</option>
+                        <option value="llc">LLC</option>
+                        <option value="lp">LP</option>
+                        <option value="married_couple">Married Couple</option>
+                        <option value="sole_owner_married_couple">Sole Owner Married Couple</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Number of Signatures:</label>
+                    <input type="number" id="dynamicNumSignatures" value="1" min="1" max="10">
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="includeSignatureBlock" checked>
+                        Include Signature Block
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="includeNotaryBlock" checked>
+                        Include Notary Block
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="embedNotaryInSignature" checked>
+                        Embed [Notary Block] in Signature
+                    </label>
+                </div>
+
+                <div style="border-top: 1px solid #00bfff; padding-top: 1rem; margin-top: 1rem;">
+                    <h3>Notary Configuration</h3>
+                    
+                    <div class="form-group">
+                        <label>State:</label>
+                        <input type="text" id="dynamicState" placeholder="Enter state">
+                    </div>
+
+                    <div class="form-group">
+                        <label>County:</label>
+                        <input type="text" id="dynamicCounty" placeholder="Enter county">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Name(s) of Individual(s):</label>
+                        <input type="text" id="dynamicNameOfIndividuals" placeholder="Enter individual names">
+                    </div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <button onclick="generateDynamicBlockPreview()">Generate Preview</button>
+                </div>
+            </div>
+
+            <!-- Preview Panel -->
+            <div class="preview-panel">
+                <h2>[sig/notary block] Preview</h2>
+                
+                <div id="dynamicBlockPreview" class="preview-content">
+                    <div style="color:#666; text-align:center; padding:2rem;">Click "Generate Preview" to see the combined block...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function generateDynamicBlockPreview() {
+            const previewContent = document.getElementById('dynamicBlockPreview');
+            previewContent.innerHTML = '<div style="color:#666; text-align:center; padding:2rem;">Generating preview...</div>';
+
+            try {
+                const formData = {
+                    owner_type: document.getElementById('dynamicOwnerType').value,
+                    num_signatures: parseInt(document.getElementById('dynamicNumSignatures').value),
+                    state: document.getElementById('dynamicState').value,
+                    county: document.getElementById('dynamicCounty').value,
+                    name_of_individuals: document.getElementById('dynamicNameOfIndividuals').value,
+                    include_signature: document.getElementById('includeSignatureBlock').checked,
+                    include_notary: document.getElementById('includeNotaryBlock').checked,
+                    embed_notary_in_signature: document.getElementById('embedNotaryInSignature').checked
+                };
+
+                const response = await fetch('/get_dynamic_block_preview', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    previewContent.innerHTML = `<div style="color:#ff6b6b;">Error: ${data.error}</div>`;
+                    return;
+                }
+
+                let previewText = '';
+                
+                if (data.include_signature && data.signature_block) {
+                    previewText += '=== SIGNATURE BLOCK ===\n';
+                    previewText += data.signature_block + '\n\n';
+                }
+                
+                if (data.include_notary && data.notary_block) {
+                    previewText += '=== NOTARY BLOCK ===\n';
+                    previewText += data.notary_block + '\n\n';
+                }
+                
+                if (data.combined_block) {
+                    previewText += '=== [sig/notary block] ===\n';
+                    previewText += data.combined_block;
+                }
+                
+                previewContent.innerHTML = `<pre style="margin:0; color:#b5e0ff;">${previewText}</pre>`;
+            } catch (error) {
+                previewContent.innerHTML = `<div style="color:#ff6b6b;">Error generating preview: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html> 
