@@ -1279,6 +1279,7 @@
                         <tbody></tbody>
                     </table>
                     <button type="button" class="secondary-btn" id="autofillPartyBlocksBtn" style="margin-bottom:1rem;">Autofill Party Blocks</button>
+                    <button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-bottom:1rem; margin-left:1rem;">Open [Sig/Not Block] Builder</button>
                     <div id="partyTypeDisplay" style="margin-bottom:1rem; color: #b5e0ff; font-weight: 600;"></div>
                     <div style="margin-top:2rem;">
                         <label for="docxFileInput" style="color:#00bfff; font-weight:500;">Upload DOCX file:</label>
@@ -1294,6 +1295,47 @@
                     </div>
                     <div id="docxValidationMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
                     <div id="docxSuccessMsg" style="color:#00bfff; margin:1rem 0; display:none;"></div>
+                </div>
+
+                <!-- Split-Screen Signature/Notary Block Builder -->
+                <div id="sigNotBlockBuilder" style="display:none; margin-top:2rem;">
+                    <div style="border-top:2px solid #00bfff; padding-top:1rem; margin-bottom:1.5rem;">
+                        <h3 style="color:#00bfff; margin-bottom:1rem;">[Sig/Not Block] Builder</h3>
+                    </div>
+                    
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; min-height:400px;">
+                        <!-- Left Side: Preview -->
+                        <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;">
+                            <h4 style="color:#00bfff; margin-bottom:1rem;">Combined Preview</h4>
+                            <div id="combinedBlockPreview" style="background:rgba(26,26,46,0.9); border-radius:8px; padding:1rem; min-height:300px; border:1px solid rgba(0,191,255,0.3); color:#e2e8f0; font-family:monospace; white-space:pre-wrap; overflow-y:auto;">
+                                <em style="color:#888;">Preview will appear here...</em>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Side: Builder -->
+                        <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;">
+                            <h4 style="color:#00bfff; margin-bottom:1rem;">Block Builder</h4>
+                            
+                            <!-- Signature Block -->
+                            <div style="margin-bottom:1.5rem;">
+                                <label for="signatureBlockInput" style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Signature Block:</label>
+                                <textarea id="signatureBlockInput" placeholder="Enter signature block content..." style="width:100%; min-height:120px; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; resize:vertical;"></textarea>
+                            </div>
+                            
+                            <!-- Notary Block -->
+                            <div style="margin-bottom:1.5rem;">
+                                <label for="notaryBlockInput" style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Notary Block:</label>
+                                <textarea id="notaryBlockInput" placeholder="Enter notary block content..." style="width:100%; min-height:120px; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; resize:vertical;"></textarea>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div style="display:flex; gap:1rem; margin-top:1rem;">
+                                <button type="button" class="submit-btn" id="updatePreviewBtn">Update Preview</button>
+                                <button type="button" class="secondary-btn" id="clearBlocksBtn">Clear Blocks</button>
+                                <button type="button" class="secondary-btn" id="copyCombinedBtn">Copy Combined</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -4104,6 +4146,120 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
                     showMessage('Failed to copy text', 'error');
                 });
             };
+
+            // Split-Screen Signature/Notary Block Builder Functionality
+            const sigNotBlockBuilder = document.getElementById('sigNotBlockBuilder');
+            const signatureBlockInput = document.getElementById('signatureBlockInput');
+            const notaryBlockInput = document.getElementById('notaryBlockInput');
+            const combinedBlockPreview = document.getElementById('combinedBlockPreview');
+            const updatePreviewBtn = document.getElementById('updatePreviewBtn');
+            const clearBlocksBtn = document.getElementById('clearBlocksBtn');
+            const copyCombinedBtn = document.getElementById('copyCombinedBtn');
+
+            // Function to update the combined preview
+            function updateCombinedPreview() {
+                const signatureText = signatureBlockInput.value.trim();
+                const notaryText = notaryBlockInput.value.trim();
+                
+                let combinedText = '';
+                
+                if (signatureText) {
+                    combinedText += 'SIGNATURE BLOCK:\n';
+                    combinedText += '─'.repeat(50) + '\n';
+                    combinedText += signatureText + '\n\n';
+                }
+                
+                if (notaryText) {
+                    combinedText += 'NOTARY BLOCK:\n';
+                    combinedText += '─'.repeat(50) + '\n';
+                    combinedText += notaryText + '\n';
+                }
+                
+                if (!signatureText && !notaryText) {
+                    combinedText = '<em style="color:#888;">No blocks defined yet...</em>';
+                }
+                
+                combinedBlockPreview.innerHTML = combinedText;
+            }
+
+            // Event listeners for the builder
+            if (updatePreviewBtn) {
+                updatePreviewBtn.addEventListener('click', updateCombinedPreview);
+            }
+
+            if (clearBlocksBtn) {
+                clearBlocksBtn.addEventListener('click', function() {
+                    signatureBlockInput.value = '';
+                    notaryBlockInput.value = '';
+                    updateCombinedPreview();
+                    showMessage('Blocks cleared', 'info');
+                });
+            }
+
+            if (copyCombinedBtn) {
+                copyCombinedBtn.addEventListener('click', function() {
+                    const signatureText = signatureBlockInput.value.trim();
+                    const notaryText = notaryBlockInput.value.trim();
+                    
+                    let combinedText = '';
+                    if (signatureText) {
+                        combinedText += signatureText + '\n\n';
+                    }
+                    if (notaryText) {
+                        combinedText += notaryText;
+                    }
+                    
+                    if (combinedText) {
+                        navigator.clipboard.writeText(combinedText).then(() => {
+                            showMessage('Combined blocks copied to clipboard', 'success');
+                        }).catch(() => {
+                            showMessage('Failed to copy blocks', 'error');
+                        });
+                    } else {
+                        showMessage('No blocks to copy', 'error');
+                    }
+                });
+            }
+
+            // Auto-update preview when typing (with debounce)
+            let updateTimeout;
+            if (signatureBlockInput) {
+                signatureBlockInput.addEventListener('input', function() {
+                    clearTimeout(updateTimeout);
+                    updateTimeout = setTimeout(updateCombinedPreview, 500);
+                });
+            }
+
+            if (notaryBlockInput) {
+                notaryBlockInput.addEventListener('input', function() {
+                    clearTimeout(updateTimeout);
+                    updateTimeout = setTimeout(updateCombinedPreview, 500);
+                });
+            }
+
+            // Function to show the builder (called from other parts of the app)
+            window.showSigNotBlockBuilder = function() {
+                if (sigNotBlockBuilder) {
+                    sigNotBlockBuilder.style.display = 'block';
+                    updateCombinedPreview();
+                }
+            };
+
+            // Function to hide the builder
+            window.hideSigNotBlockBuilder = function() {
+                if (sigNotBlockBuilder) {
+                    sigNotBlockBuilder.style.display = 'none';
+                }
+            };
+
+            // Event listener for opening the builder
+            const openSigNotBuilderBtn = document.getElementById('openSigNotBuilderBtn');
+            if (openSigNotBuilderBtn) {
+                openSigNotBuilderBtn.addEventListener('click', function() {
+                    showSigNotBlockBuilder();
+                    showMessage('Signature/Notary Block Builder opened', 'info');
+                });
+            }
         });
     </script>
 </body>
