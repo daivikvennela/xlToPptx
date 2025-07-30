@@ -1184,13 +1184,22 @@
         <div class="tab-content" id="lease-population-tab">
             <div class="main-content">
                 <h1>Lease Population: DOCX Placeholder Replacement</h1>
+                <div id="welcomeMessage" style="margin-bottom:2rem; padding:1.5rem; background:rgba(0,191,255,0.1); border-radius:12px; border-left:4px solid #00bfff;">
+                    <h3 style="color:#00bfff; margin-bottom:1rem;">Welcome to Lease Population</h3>
+                    <p style="color:#b5e0ff; margin-bottom:1rem;">Choose your preferred input method to get started:</p>
+                    <ul style="color:#cbd5e0; line-height:1.6;">
+                        <li><strong>Manual Entry:</strong> Add placeholders and values one by one</li>
+                        <li><strong>Upload Table:</strong> Upload a CSV or Excel file with your data</li>
+                        <li><strong>Paste Table:</strong> Paste tab-separated data from Excel or Sheets</li>
+                    </ul>
+                </div>
                 <div style="margin-bottom:2rem;">
                     <label style="font-weight:600; color:#00bfff;">Input Method:</label>
                     <button type="button" class="secondary-btn" id="manualInputBtn">Manual Entry</button>
                     <button type="button" class="secondary-btn" id="uploadTableBtn">Upload Table (CSV/Excel)</button>
                     <button type="button" class="secondary-btn" id="pasteTableBtn">Paste Table</button>
                 </div>
-                <div id="inputMethodManual" style="display:block;">
+                <div id="inputMethodManual" style="display:none;">
                     <form id="kvForm" class="upload-form" autocomplete="off">
                         <div id="kvPairsContainer">
                             <!-- Dynamic key-value pairs will be inserted here -->
@@ -1254,7 +1263,7 @@
                     <button id="copyOwnerSigBlockBtn" class="submit-btn" style="margin-top:1rem;">Copy to Clipboard</button>
                   </div>
                 </div>
-                <div style="margin:2rem 0 1rem 0;">
+                <div id="replacementModeSection" style="display:none; margin:2rem 0 1rem 0;">
                     <label style="font-weight:600; color:#00bfff;">Replacement Mode:</label>
                     <button type="button" class="secondary-btn" id="trackChangesBtn">Track Changes: <span id="trackChangesStatus">OFF</span></button>
                 </div>
@@ -2062,16 +2071,19 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 inputMethodManual.style.display = 'block';
                 inputMethodUpload.style.display = 'none';
                 inputMethodPaste.style.display = 'none';
+                document.getElementById('welcomeMessage').style.display = 'none';
             };
             uploadTableBtn.onclick = function() {
                 inputMethodManual.style.display = 'none';
                 inputMethodUpload.style.display = 'block';
                 inputMethodPaste.style.display = 'none';
+                document.getElementById('welcomeMessage').style.display = 'none';
             };
             pasteTableBtn.onclick = function() {
                 inputMethodManual.style.display = 'none';
                 inputMethodUpload.style.display = 'none';
                 inputMethodPaste.style.display = 'block';
+                document.getElementById('welcomeMessage').style.display = 'none';
             };
 
             // Table upload/parse logic
@@ -2133,6 +2145,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     kvForm.parsedDocumentName = parsedDocumentName;
                     // Auto-select party type
                     autoSelectPartyTypeFromMapping(parsedTableMapping);
+                    // Show replacement mode section
+                    document.getElementById('replacementModeSection').style.display = 'block';
                 };
             }
 
@@ -2322,6 +2336,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     kvSummaryTable.appendChild(row);
                 }
                 kvSummarySection.style.display = 'block';
+                // Show replacement mode section
+                document.getElementById('replacementModeSection').style.display = 'block';
                 // Store for later
                 kvForm.kvMapping = mapping;
                 updatePartyTypeDisplay();
@@ -2559,6 +2575,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     kvForm.parsedDocumentName = pastedDocumentName;
                     // Auto-select party type
                     autoSelectPartyTypeFromMapping(pastedTableMapping);
+                    // Show replacement mode section
+                    document.getElementById('replacementModeSection').style.display = 'block';
                 };
             }
         }
