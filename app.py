@@ -1952,6 +1952,42 @@ def get_party_block_templates():
     except Exception as e:
         return jsonify({'error': f'Could not load template: {str(e)}'}), 400
 
+@app.route('/generate_signature_block', methods=['POST'])
+def generate_signature_block():
+    """
+    Generate signature block using the generator function
+    """
+    try:
+        data = request.get_json()
+        owner_type = data.get('ownerType', '').strip()
+        is_notary = data.get('isNotary', False)
+        num_signatures = int(data.get('numSignatures', 1))
+        
+        print(f"[DEBUG] Generating signature block: owner_type='{owner_type}', is_notary={is_notary}, num_signatures={num_signatures}")
+        
+        # Validate inputs
+        if not owner_type:
+            return jsonify({'success': False, 'error': 'Owner type is required'}), 400
+        
+        if num_signatures < 1:
+            return jsonify({'success': False, 'error': 'Number of signatures must be at least 1'}), 400
+        
+        # Import generator function
+        from block_replacer import generator
+        
+        # Call generator function
+        result = generator(owner_type, is_notary, '', num_signatures)
+        
+        print(f"[DEBUG] Generated content length: {len(result) if result else 0}")
+        
+        return jsonify({'success': True, 'content': result})
+        
+    except Exception as e:
+        print(f"[ERROR] Error generating signature block: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/get_signature_block', methods=['POST'])
 def get_signature_block():
     data = request.get_json()

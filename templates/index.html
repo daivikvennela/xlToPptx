@@ -848,6 +848,12 @@
         .message.info {
             background-color: #00bfff;
         }
+        
+        /* Pulse animation for live preview indicator */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -1204,6 +1210,11 @@
                         <div id="kvPairsContainer">
                             <!-- Dynamic key-value pairs will be inserted here -->
                         </div>
+                        <!-- Temp Quick Fill Buttons -->
+                        <div style="margin-bottom: 1rem;">
+                            <button type="button" class="secondary-btn" id="quickFillSigBlockBtnTemp" style="margin-right:1rem;" disabled>Quick Fill Signature Block Temp</button>
+                            <button type="button" class="secondary-btn" id="quickFillNotaryBlockBtnTemp" disabled>Quick Fill Notary Block Temp</button>
+                        </div>
                         <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
                         <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
                         <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
@@ -1278,8 +1289,204 @@
                         <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
                         <tbody></tbody>
                     </table>
+                    
+                    <!-- Split-Screen Signature/Notary Block Builder (Moved to Top) -->
+                    <div id="sigNotBlockBuilder" style="display:none; margin-top:2rem;">
+                        <div style="border-top:2px solid #00bfff; padding-top:1rem; margin-bottom:1.5rem;">
+                            <h3 style="color:#00bfff; margin-bottom:1rem;">[Sig/Not Block] Builder</h3>
+                        </div>
+                        
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; min-height:400px;">
+                            <!-- Left Side: Preview -->
+                            <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;">
+                                <h4 style="color:#00bfff; margin-bottom:1rem;">Combined Preview</h4>
+                                <div id="combinedBlockPreview" style="background:rgba(26,26,46,0.9); border-radius:8px; padding:1rem; min-height:300px; border:1px solid rgba(0,191,255,0.3); color:#e2e8f0; font-family:monospace; white-space:pre-wrap; overflow-y:auto;">
+                                    <em style="color:#888;">Preview will appear here...</em>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Side: Builder -->
+                            <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;">
+                                <h4 style="color:#00bfff; margin-bottom:1rem;">Block Builder</h4>
+                                
+                                <!-- Notary Block (Moved to Top) -->
+                                <div style="margin-bottom:1.5rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                        <label for="notaryBlockInput" style="color:#b5e0ff; font-weight:600;">Notary Block:</label>
+                                        <button type="button" class="secondary-btn" id="generateNotaryBlockBtn" style="padding:0.5rem 1rem; font-size:0.9rem;">Generate Notary Block</button>
+                                    </div>
+                                    <textarea id="notaryBlockInput" placeholder="Enter notary block content..." style="width:100%; min-height:120px; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; resize:vertical;"></textarea>
+                                </div>
+                                
+                                <!-- Signature Block -->
+                                <div style="margin-bottom:1.5rem;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+                                        <label for="signatureBlockInput" style="color:#b5e0ff; font-weight:600;">Signature Block:</label>
+                                        <button type="button" class="secondary-btn" id="toggleNotaryInSigBtn" style="padding:0.5rem 1rem; font-size:0.9rem;">Toggle [Notary Block]</button>
+                                    </div>
+                                    <textarea id="signatureBlockInput" placeholder="Enter signature block content..." style="width:100%; min-height:120px; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; resize:vertical;"></textarea>
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div style="display:flex; gap:1rem; margin-top:1rem;">
+                                    <button type="button" class="submit-btn" id="updatePreviewBtn">Update Preview</button>
+                                    <button type="button" class="secondary-btn" id="clearBlocksBtn">Clear Blocks</button>
+                                    <button type="button" class="secondary-btn" id="copyCombinedBtn">Copy Combined</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Signature/Notary Block Workflow -->
+                    <div id="enhancedSigNotaryWorkflow" style="display:none; margin-top:2rem;">
+                        <!-- Horizontal Bar Separator -->
+                        <div style="height: 2px; background: linear-gradient(90deg, #00bfff, rgba(26,26,46,0.8)); margin: 1.5rem 0; border-radius: 1px;"></div>
+                        
+                        <!-- Step Indicators -->
+                        <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem;">
+                            <div class="step-workflow active" id="workflowStep1" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 8px; background: rgba(0,191,255,0.2); border: 1px solid #00bfff; color: #00bfff; cursor: pointer; transition: all 0.3s ease;">
+                                <div style="background: #00bfff; color: #1a1a2e; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.875rem;">1</div>
+                                <span>Notary Block Generation</span>
+                            </div>
+                            <div class="step-workflow" id="workflowStep2" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border-radius: 8px; background: rgba(26,26,46,0.6); border: 1px solid #444; cursor: pointer; transition: all 0.3s ease;">
+                                <div style="background: #00bfff; color: #1a1a2e; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.875rem;">2</div>
+                                <span>Dynamic Signature Block</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Split Screen Layout -->
+                        <div style="display: flex; gap: 2rem; min-height: 600px;">
+                            <!-- Right Panel: Configuration Controls -->
+                            <div style="flex: 1; background: rgba(26,26,46,0.8); border-radius: 8px; padding: 1.5rem; border: 1px solid #00bfff;">
+                                <h3 style="color: #00bfff; margin-bottom: 1rem;">Block Configuration</h3>
+                                
+                                <!-- Step 1: Notary Block Configuration -->
+                                <div style="border: 1px solid #444; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2);" id="workflowNotarySection">
+                                    <div style="color: #00bfff; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem;">Step 1: Notary Block Configuration</div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">State:</label>
+                                        <input type="text" id="workflowState" placeholder="e.g., Texas" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">County:</label>
+                                        <input type="text" id="workflowCounty" placeholder="e.g., Harris" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Name(s) of Individual(s):</label>
+                                        <input type="text" id="workflowNameOfIndividuals" placeholder="e.g., John Doe and Jane Doe" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Type of Authority (for entities):</label>
+                                        <input type="text" id="workflowTypeOfAuthority" placeholder="e.g., President" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Instrument For (for entities):</label>
+                                        <input type="text" id="workflowInstrumentFor" placeholder="Entity/Trust name" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: Signature Block Configuration -->
+                                <div style="border: 1px solid #444; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2);" id="workflowSignatureSection">
+                                    <div style="color: #00bfff; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem;">Step 2: Dynamic Signature Block</div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Owner Type:</label>
+                                        <select id="workflowOwnerType" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                            <option value="individual">Individual</option>
+                                            <option value="corporation">Corporation</option>
+                                            <option value="llc">LLC</option>
+                                            <option value="lp">Limited Partnership</option>
+                                            <option value="married_couple">Married Couple</option>
+                                            <option value="sole_owner_married_couple">Sole Owner Married Couple</option>
+                                        </select>
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Number of Signatures:</label>
+                                        <input type="number" id="workflowNumSignatures" value="1" min="1" max="10" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Grantor Name:</label>
+                                        <input type="text" id="workflowGrantorName" placeholder="e.g., John and Jane Doe" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Trust/Entity Name (if applicable):</label>
+                                        <input type="text" id="workflowTrustEntityName" placeholder="e.g., ABC Corporation" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Name:</label>
+                                        <input type="text" id="workflowName" placeholder="e.g., John Doe" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Title:</label>
+                                        <input type="text" id="workflowTitle" placeholder="e.g., President" style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0; font-size: 0.95rem;">
+                                    </div>
+                                </div>
+
+                                <!-- Control Options -->
+                                <div style="border: 1px solid #444; border-radius: 6px; padding: 1rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.2);">
+                                    <div style="color: #00bfff; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid #444; padding-bottom: 0.5rem;">Block Control Options</div>
+                                    
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s ease;">
+                                            <input type="checkbox" id="workflowIncludeSignatureBlock" checked style="margin-right: 0.5rem; transform: scale(1.2);">
+                                            <span style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Include Signature Block</span>
+                                        </label>
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s ease;">
+                                            <input type="checkbox" id="workflowIncludeNotaryBlock" checked style="margin-right: 0.5rem; transform: scale(1.2);">
+                                            <span style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Include Notary Block</span>
+                                        </label>
+                                    </div>
+
+                                    <div style="margin-bottom: 1rem;">
+                                        <label style="display: flex; align-items: center; cursor: pointer; padding: 0.5rem; border-radius: 4px; transition: background 0.2s ease;">
+                                            <input type="checkbox" id="workflowEmbedNotaryInSignature" checked style="margin-right: 0.5rem; transform: scale(1.2);">
+                                            <span style="color: #b5e0ff; display: block; margin-bottom: 0.5rem; font-weight: 500;">Embed [Notary Block] within Signature Block</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div style="margin-top: 1.5rem; text-align: center;">
+                                    <button id="workflowGeneratePreview" class="submit-btn" style="background: #00bfff; color: #1a1a2e; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; margin-right: 0.5rem; font-weight: 600; transition: all 0.3s ease;">Generate Preview</button>
+                                    <button id="workflowCopyToClipboard" class="secondary-btn" style="background: #444; color: #e2e8f0; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; margin-right: 0.5rem; font-weight: 600;">Copy to Clipboard</button>
+                                    <button id="workflowApplyToMain" class="secondary-btn" style="background: #444; color: #e2e8f0; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Apply to Main System</button>
+                                </div>
+                            </div>
+
+                            <!-- Left Panel: Live Preview -->
+                            <div style="flex: 1; background: rgba(26,26,46,0.9); border-radius: 8px; padding: 1.5rem; border: 1px solid #00bfff;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="color: #00bfff; margin: 0;">[sig/notary block] Preview</h3>
+                                    <div style="color: #00ff00; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem;">
+                                        <div style="width: 8px; height: 8px; background: #00ff00; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+                                        Live Preview
+                                    </div>
+                                </div>
+                                
+                                <div id="workflowBlockPreview" style="background: #181830; color: #b5e0ff; padding: 1.5rem; border-radius: 8px; min-height: 400px; font-family: 'Courier New', monospace; white-space: pre-wrap; overflow-y: auto; border: 1px solid #00bfff; line-height: 1.6;">
+                                    <div style="color:#666; text-align:center; padding:2rem;">
+                                        Configure your blocks using the controls →<br/>
+                                        Preview will update automatically as you type
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <button type="button" class="secondary-btn" id="autofillPartyBlocksBtn" style="margin-bottom:1rem;">Autofill Party Blocks</button>
-                    <button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-bottom:1rem; margin-left:1rem;">Open [Sig/Not Block] Builder</button>
                     <div id="partyTypeDisplay" style="margin-bottom:1rem; color: #b5e0ff; font-weight: 600;"></div>
                     <div style="margin-top:2rem;">
                         <label for="docxFileInput" style="color:#00bfff; font-weight:500;">Upload DOCX file:</label>
@@ -1297,46 +1504,7 @@
                     <div id="docxSuccessMsg" style="color:#00bfff; margin:1rem 0; display:none;"></div>
                 </div>
 
-                <!-- Split-Screen Signature/Notary Block Builder -->
-                <div id="sigNotBlockBuilder" style="display:none; margin-top:2rem;">
-                    <div style="border-top:2px solid #00bfff; padding-top:1rem; margin-bottom:1.5rem;">
-                        <h3 style="color:#00bfff; margin-bottom:1rem;">[Sig/Not Block] Builder</h3>
-                    </div>
-                    
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:2rem; min-height:400px;">
-                        <!-- Left Side: Preview -->
-                        <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;">
-                            <h4 style="color:#00bfff; margin-bottom:1rem;">Combined Preview</h4>
-                            <div id="combinedBlockPreview" style="background:rgba(26,26,46,0.9); border-radius:8px; padding:1rem; min-height:300px; border:1px solid rgba(0,191,255,0.3); color:#e2e8f0; font-family:monospace; white-space:pre-wrap; overflow-y:auto;">
-                                <em style="color:#888;">Preview will appear here...</em>
-                            </div>
-                        </div>
-                        
-                        <!-- Right Side: Builder -->
-                        <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;">
-                            <h4 style="color:#00bfff; margin-bottom:1rem;">Block Builder</h4>
-                            
-                            <!-- Signature Block -->
-                            <div style="margin-bottom:1.5rem;">
-                                <label for="signatureBlockInput" style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Signature Block:</label>
-                                <textarea id="signatureBlockInput" placeholder="Enter signature block content..." style="width:100%; min-height:120px; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; resize:vertical;"></textarea>
-                            </div>
-                            
-                            <!-- Notary Block -->
-                            <div style="margin-bottom:1.5rem;">
-                                <label for="notaryBlockInput" style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Notary Block:</label>
-                                <textarea id="notaryBlockInput" placeholder="Enter notary block content..." style="width:100%; min-height:120px; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; font-family:monospace; resize:vertical;"></textarea>
-                            </div>
-                            
-                            <!-- Action Buttons -->
-                            <div style="display:flex; gap:1rem; margin-top:1rem;">
-                                <button type="button" class="submit-btn" id="updatePreviewBtn">Update Preview</button>
-                                <button type="button" class="secondary-btn" id="clearBlocksBtn">Clear Blocks</button>
-                                <button type="button" class="secondary-btn" id="copyCombinedBtn">Copy Combined</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
             </div>
         </div>
 
@@ -2370,23 +2538,29 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
                     kvSummaryTable.appendChild(row);
                 });
-                // Always show [Signature Block] and [Notary Block] rows
-                if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>[Signature Block]</td><td></td>`;
-                    kvSummaryTable.appendChild(row);
-                }
-                if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[notary block]')) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>[Notary Block]</td><td></td>`;
-                    kvSummaryTable.appendChild(row);
-                }
-                kvSummarySection.style.display = 'block';
+                // Always show [Signature Block] and [Signature Block With Notrary] rows
+                            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>[Signature Block]</td><td></td>`;
+                kvSummaryTable.appendChild(row);
+            }
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block with notrary]')) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>[Signature Block With Notrary]</td><td></td>`;
+                kvSummaryTable.appendChild(row);
+            }
+            kvSummarySection.style.display = 'block';
+            
+            // Check for "Number of Parcels" and show enhanced workflow
+            checkAndShowEnhancedWorkflow(mapping);
                 // Show replacement mode section
                 document.getElementById('replacementModeSection').style.display = 'block';
                 // Store for later
                 kvForm.kvMapping = mapping;
                 updatePartyTypeDisplay();
+                
+                // Check for "Number of Parcels" and show enhanced workflow
+                checkAndShowEnhancedWorkflow(mapping);
             };
 
             exportJsonBtn.onclick = function() {
@@ -2867,7 +3041,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 }
             }
             if (sigBlock) upsertBlockIfEmpty('[Signature Block]', sigBlock);
-            if (notaryBlock) upsertBlockIfEmpty('[Notary Block]', notaryBlock);
+            // For now, leave [Signature Block With Notrary] empty until backend implementation is ready
+            upsertBlockIfEmpty('[Signature Block With Notrary]', '');
             // Update summary table
             kvSummaryTable.innerHTML = '';
             mapping.forEach(pair => {
@@ -2875,15 +3050,15 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
                 kvSummaryTable.appendChild(row);
             });
-            // Always show [Signature Block] and [Notary Block] rows if missing
+            // Always show [Signature Block] and [Signature Block With Notrary] rows if missing
             if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
                 const row = document.createElement('tr');
                 row.innerHTML = `<td>[Signature Block]</td><td></td>`;
                 kvSummaryTable.appendChild(row);
             }
-            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[notary block]')) {
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block with notrary]')) {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>[Notary Block]</td><td></td>`;
+                row.innerHTML = `<td>[Signature Block With Notrary]</td><td></td>`;
                 kvSummaryTable.appendChild(row);
             }
             kvForm.kvMapping = mapping;
@@ -2981,7 +3156,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 }
             }
             upsertInputRowIfEmpty('[Signature Block]', sigBlock);
-            upsertInputRowIfEmpty('[Notary Block]', notaryBlock);
+            upsertInputRowIfEmpty('[Signature Block With Notrary]', '');
             // Ensure rows are up to date for summary
             return true;
         }
@@ -3025,7 +3200,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             }
             // Build mapping
             let mapping = keys.map((k, i) => ({key: k, value: values[i]}));
-            // Always show [Signature Block] and [Notary Block] rows in summary
+            // Always show [Signature Block] and [Signature Block With Notrary] rows in summary
             kvSummaryTable.innerHTML = '';
             mapping.forEach(pair => {
                 const row = document.createElement('tr');
@@ -3037,9 +3212,9 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 row.innerHTML = `<td>[Signature Block]</td><td></td>`;
                 kvSummaryTable.appendChild(row);
             }
-            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[notary block]')) {
+            if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block with notrary]')) {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>[Notary Block]</td><td></td>`;
+                row.innerHTML = `<td>[Signature Block With Notrary]</td><td></td>`;
                 kvSummaryTable.appendChild(row);
             }
             kvForm.kvMapping = mapping;
@@ -3059,7 +3234,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     row.remove();
                     return;
                 }
-                if ((key === '[signature block]' || key === '[notary block]')) {
+                if ((key === '[signature block]' || key === '[signature block with notrary]')) {
                     if (seen[key]) {
                         row.remove();
                     } else {
@@ -3079,17 +3254,99 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 const div = document.createElement('div');
                 div.className = 'kv-pair-row';
                 div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                
+                // Check if this is a signature block that needs a Generate button
+                const needsGenerateButton = key === '[Signature Block]' || key === '[Signature Block With Notrary]';
+                const generateButtonHtml = needsGenerateButton ? 
+                    `<button type="button" class="secondary-btn generate-btn" style="padding:0.5rem 1rem; margin-left:0.5rem;">Generate</button>` : '';
+                
                 div.innerHTML = `
                     <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
                     <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required></textarea>
                     <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+                    ${generateButtonHtml}
                 `;
                 kvPairsContainer.appendChild(div);
                 div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
+                
+                // Add Generate button functionality for signature blocks
+                if (needsGenerateButton) {
+                    const generateBtn = div.querySelector('.generate-btn');
+                    generateBtn.onclick = function() {
+                        generateSignatureBlock(key, div);
+                    };
+                }
             }
             if (!hasRow('[Signature Block]')) addRow('[Signature Block]');
-            if (!hasRow('[Notary Block]')) addRow('[Notary Block]');
+            if (!hasRow('[Signature Block With Notrary]')) addRow('[Signature Block With Notrary]');
         }
+        // Function to generate signature block content
+        async function generateSignatureBlock(key, rowDiv) {
+            try {
+                // Extract values from current form
+                const ownerType = getFormValue('[Owner Type]');
+                const numSignatures = parseInt(getFormValue('[Number of Grantor Signatures]')) || 1;
+                
+                // Determine if this is for notary version
+                const isNotary = key === '[Signature Block With Notrary]';
+                
+                if (!ownerType) {
+                    alert('Please fill in the [Owner Type] field first');
+                    return;
+                }
+                
+                // Show loading state
+                const generateBtn = rowDiv.querySelector('.generate-btn');
+                const originalText = generateBtn.textContent;
+                generateBtn.textContent = 'Generating...';
+                generateBtn.disabled = true;
+                
+                // Call backend API
+                const response = await fetch('/generate_signature_block', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ownerType: ownerType,
+                        isNotary: isNotary,
+                        numSignatures: numSignatures
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Update the textarea with generated content
+                    const textarea = rowDiv.querySelector('.kv-value');
+                    textarea.value = result.content;
+                } else {
+                    alert('Error generating signature block: ' + result.error);
+                }
+                
+            } catch (error) {
+                alert('Error generating signature block: ' + error.message);
+            } finally {
+                // Reset button state
+                const generateBtn = rowDiv.querySelector('.generate-btn');
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+            }
+        }
+        
+        // Helper function to get form value by key
+        function getFormValue(key) {
+            const rows = document.querySelectorAll('#kvPairsContainer .kv-pair-row');
+            for (const row of rows) {
+                const keyInput = row.querySelector('.kv-key');
+                const valueInput = row.querySelector('.kv-value');
+                if (keyInput && keyInput.value.trim() === key) {
+                    return valueInput.value.trim();
+                }
+            }
+            return '';
+        }
+
         // Call on page load
         ensurePartyBlockInputsExist();
         // Call after add/remove/edit
@@ -3198,17 +3455,32 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                             const div = document.createElement('div');
                             div.className = 'kv-pair-row';
                             div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                            
+                            // Check if this is a signature block that needs a Generate button
+                            const needsGenerateButton = key === '[Signature Block]' || key === '[Signature Block With Notrary]';
+                            const generateButtonHtml = needsGenerateButton ? 
+                                `<button type="button" class="secondary-btn generate-btn" style="padding:0.5rem 1rem; margin-left:0.5rem;">Generate</button>` : '';
+                            
                             div.innerHTML = `
                                 <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
                                 <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required>${value}</textarea>
                                 <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+                                ${generateButtonHtml}
                             `;
                             kvPairsContainer.appendChild(div);
                             div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
+                            
+                            // Add Generate button functionality for signature blocks
+                            if (needsGenerateButton) {
+                                const generateBtn = div.querySelector('.generate-btn');
+                                generateBtn.onclick = function() {
+                                    generateSignatureBlock(key, div);
+                                };
+                            }
                         }
                     }
                     upsertInputRowIfEmpty('[Signature Block]', sigVal);
-                    upsertInputRowIfEmpty('[Notary Block]', notaryVal);
+                    upsertInputRowIfEmpty('[Signature Block With Notrary]', '');
                     previewSection.style.display = 'none';
                 };
             };
@@ -3239,9 +3511,96 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         */
 
         // After the line that adds the Fill Signature and Notary Block button:
-        document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;">Quick Fill Signature Block</button>');
-        document.getElementById('quickFillSigBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillNotaryBlockBtn" style="margin-left:1rem;">Quick Fill Notary Block</button>');
+        document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Signature Block</button>');
+        document.getElementById('quickFillSigBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillNotaryBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Notary Block</button>');
         document.getElementById('quickFillNotaryBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openExhibitAModalBtn" style="margin-left:1rem;">Generate Exhibit A</button>');
+        document.getElementById('openExhibitAModalBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-left:1rem;" disabled>Open Sig Block Builder</button>');
+        
+        // Add event listener for the Open Sig Block Builder button
+        document.getElementById('openSigNotBuilderBtn').addEventListener('click', function() {
+            const kvSummarySection = document.getElementById('kvSummarySection');
+            const sigNotBlockBuilder = document.getElementById('sigNotBlockBuilder');
+            
+            // Show the parent container first
+            if (kvSummarySection) {
+                kvSummarySection.style.display = 'block';
+            }
+            
+            // Then show the sig block builder
+            if (sigNotBlockBuilder) {
+                sigNotBlockBuilder.style.display = 'block';
+            }
+            
+            // Scroll to the sig block builder
+            if (sigNotBlockBuilder) {
+                sigNotBlockBuilder.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+
+        // Add temp Quick Fill button functionality
+        document.getElementById('quickFillSigBlockBtnTemp').onclick = async function() {
+          // Extract [Owner Type] and [Number of Grantor Signatures] from kvPairsContainer
+          let ownerType = '';
+          let numSigs = '';
+          Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
+            const keyInput = row.querySelector('.kv-key');
+            const valueInput = row.querySelector('.kv-value, textarea.kv-value');
+            const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
+            
+            // Try different variations of Owner Type
+            if (key === '[owner type]' || key === 'owner type' || key === 'owner_type') {
+              ownerType = valueInput.value.trim();
+            }
+            // Try different variations of Number of Grantor Signatures
+            if (key === '[number of grantor signatures]' || key === 'number of grantor signatures' || key === 'number_of_grantor_signatures') {
+              numSigs = valueInput.value.trim();
+            }
+          });
+          
+          if (!ownerType || !numSigs) {
+            alert('Both [Owner Type] and [Number of Grantor Signatures] must be present in the table.\n\nFound Owner Type: "' + ownerType + '"\nFound Number of Signatures: "' + numSigs + '"\n\nPlease check your field names.');
+            return;
+          }
+          
+          // Fetch signature block directly without modal
+          try {
+            const response = await fetch('/get_signature_block', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ownerType: ownerType, numSignatures: numSigs })
+            });
+            const data = await response.json();
+            const sigBlockVal = data.signature_block || '(No content)';
+            
+            // Update [Signature Block] in kvPairsContainer
+            let found = false;
+            Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
+              const keyInput = row.querySelector('.kv-key');
+              const valueInput = row.querySelector('.kv-value, textarea.kv-value');
+              if (keyInput && keyInput.value.trim().toLowerCase() === '[signature block]') {
+                valueInput.value = sigBlockVal;
+                found = true;
+              }
+            });
+            if (!found) {
+              // Add new row for [Signature Block]
+              const div = document.createElement('div');
+              div.className = 'kv-pair-row';
+              div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+              div.innerHTML = `
+                <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="[Signature Block]" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required>${sigBlockVal}</textarea>
+                <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
+              `;
+              document.getElementById('kvPairsContainer').appendChild(div);
+              div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
+            }
+          } catch (err) {
+            alert('Error loading signature block: ' + err.message);
+          }
+        };
+
+
 
         // Add modal for confirmation (reuse or create if not present)
         if (!document.getElementById('quickSigBlockModal')) {
@@ -3404,33 +3763,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             modal.style.display = 'none';
           };
           
-          // Confirm handler: copy to [Notary Block] in kvPairsContainer
-          document.getElementById('confirmQuickNotaryBlockBtn').onclick = function() {
-            const notaryBlockVal = document.getElementById('quickNotaryBlockPreview').value;
-            let found = false;
-            Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
-              const keyInput = row.querySelector('.kv-key');
-              const valueInput = row.querySelector('.kv-value, textarea.kv-value');
-              if (keyInput && keyInput.value.trim().toLowerCase() === '[notary block]') {
-                valueInput.value = notaryBlockVal;
-                found = true;
-              }
-            });
-            if (!found) {
-              // Add new row for [Notary Block]
-              const div = document.createElement('div');
-              div.className = 'kv-pair-row';
-              div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
-              div.innerHTML = `
-                <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="[Notary Block]" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
-                <textarea class="kv-value" placeholder="Replacement value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:8em; resize:vertical;" required>${notaryBlockVal}</textarea>
-                <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;">Remove</button>
-              `;
-              document.getElementById('kvPairsContainer').appendChild(div);
-              div.querySelector('.remove-pair-btn').onclick = function() { div.remove(); };
-            }
-            modal.style.display = 'none';
-          };
+
         };
 
         // Add comprehensive Exhibit A modal
@@ -4221,6 +4554,42 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
                 });
             }
 
+            // Add functionality for Generate Notary Block button
+            const generateNotaryBlockBtn = document.getElementById('generateNotaryBlockBtn');
+            if (generateNotaryBlockBtn) {
+                generateNotaryBlockBtn.addEventListener('click', async function() {
+                    try {
+                        // Fetch notary block from backend
+                        const response = await fetch('/get_notary_block', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({})
+                        });
+                        const data = await response.json();
+                        const notaryBlockVal = data.notary_block || '(No content)';
+                        
+                        // Update the notary block textarea in the builder
+                        notaryBlockInput.value = notaryBlockVal;
+                        
+
+                        
+                        // Update the combined preview
+                        updateCombinedPreview();
+                        showMessage('Notary block generated and updated', 'success');
+                        
+                    } catch (err) {
+                        showMessage('Error loading notary block: ' + err.message, 'error');
+                    }
+                });
+            }
+
+
+
+            // Helper function to escape special regex characters
+            function escapeRegExp(string) {
+                return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
             // Auto-update preview when typing (with debounce)
             let updateTimeout;
             if (signatureBlockInput) {
@@ -4252,13 +4621,247 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
                 }
             };
 
-            // Event listener for opening the builder
-            const openSigNotBuilderBtn = document.getElementById('openSigNotBuilderBtn');
-            if (openSigNotBuilderBtn) {
-                openSigNotBuilderBtn.addEventListener('click', function() {
-                    showSigNotBlockBuilder();
-                    showMessage('Signature/Notary Block Builder opened', 'info');
+
+
+            // === Enhanced Signature/Notary Block Workflow Functions ===
+            
+            function checkAndShowEnhancedWorkflow(mapping) {
+                // Check if "Number of Parcels" or similar key exists
+                const hasNumberOfParcels = mapping.some(pair => {
+                    const key = pair.key.trim().toLowerCase();
+                    return key.includes('parcel') || key.includes('# of parcel') || key.includes('number of parcel');
                 });
+                
+                const enhancedWorkflow = document.getElementById('enhancedSigNotaryWorkflow');
+                if (hasNumberOfParcels && enhancedWorkflow) {
+                    enhancedWorkflow.style.display = 'block';
+                    console.log('Enhanced signature/notary workflow activated due to Number of Parcels detected');
+                    
+                    // Initialize the enhanced workflow
+                    initializeEnhancedWorkflow(mapping);
+                }
+            }
+            
+            function initializeEnhancedWorkflow(mapping) {
+                // Auto-populate fields from existing mapping if available
+                const fieldMappings = {
+                    'workflowState': ['state', '[state]'],
+                    'workflowCounty': ['county', '[county]'],
+                    'workflowNameOfIndividuals': ['name(s) of individual(s)', '[name(s) of individual(s)]', 'individual names'],
+                    'workflowTypeOfAuthority': ['type of authority', '[type of authority]'],
+                    'workflowInstrumentFor': ['instrument for', '[name of entity or trust whom instrument was executed for]'],
+                    'workflowGrantorName': ['grantor name', '[grantor name]'],
+                    'workflowTrustEntityName': ['trust/entity name', '[trust/entity name]'],
+                    'workflowName': ['name', '[name]'],
+                    'workflowTitle': ['title', '[title]']
+                };
+                
+                // Auto-fill fields from existing mapping
+                Object.keys(fieldMappings).forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field) {
+                        const matchingPair = mapping.find(pair => {
+                            const key = pair.key.trim().toLowerCase();
+                            return fieldMappings[fieldId].some(pattern => key.includes(pattern.toLowerCase()));
+                        });
+                        if (matchingPair) {
+                            field.value = matchingPair.value;
+                        }
+                        
+                        // Add auto-update event listeners
+                        field.addEventListener('input', debounceWorkflowPreview);
+                    }
+                });
+                
+                // Add event listeners for select and checkbox controls
+                const controls = ['workflowOwnerType', 'workflowNumSignatures', 'workflowIncludeSignatureBlock', 'workflowIncludeNotaryBlock', 'workflowEmbedNotaryInSignature'];
+                controls.forEach(controlId => {
+                    const control = document.getElementById(controlId);
+                    if (control) {
+                        control.addEventListener('change', debounceWorkflowPreview);
+                    }
+                });
+                
+                // Add button event listeners
+                const generateBtn = document.getElementById('workflowGeneratePreview');
+                if (generateBtn) {
+                    generateBtn.addEventListener('click', generateWorkflowPreview);
+                }
+                
+                const copyBtn = document.getElementById('workflowCopyToClipboard');
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', copyWorkflowToClipboard);
+                }
+                
+                const applyBtn = document.getElementById('workflowApplyToMain');
+                if (applyBtn) {
+                    applyBtn.addEventListener('click', applyWorkflowToMainSystem);
+                }
+                
+                // Add step navigation
+                const step1 = document.getElementById('workflowStep1');
+                const step2 = document.getElementById('workflowStep2');
+                if (step1) {
+                    step1.addEventListener('click', () => scrollToWorkflowSection('workflowNotarySection'));
+                }
+                if (step2) {
+                    step2.addEventListener('click', () => scrollToWorkflowSection('workflowSignatureSection'));
+                }
+                
+                // Generate initial preview
+                setTimeout(generateWorkflowPreview, 500);
+            }
+            
+            let workflowDebounceTimer;
+            function debounceWorkflowPreview() {
+                clearTimeout(workflowDebounceTimer);
+                workflowDebounceTimer = setTimeout(generateWorkflowPreview, 300);
+            }
+            
+            async function generateWorkflowPreview() {
+                const previewDiv = document.getElementById('workflowBlockPreview');
+                if (!previewDiv) return;
+                
+                previewDiv.innerHTML = '<div style="color:#666; text-align:center; padding:2rem;">Generating preview...</div>';
+                
+                try {
+                    const formData = {
+                        owner_type: document.getElementById('workflowOwnerType')?.value || 'individual',
+                        num_signatures: parseInt(document.getElementById('workflowNumSignatures')?.value) || 1,
+                        state: document.getElementById('workflowState')?.value || '',
+                        county: document.getElementById('workflowCounty')?.value || '',
+                        name_of_individuals: document.getElementById('workflowNameOfIndividuals')?.value || '',
+                        type_of_authority: document.getElementById('workflowTypeOfAuthority')?.value || '',
+                        instrument_for: document.getElementById('workflowInstrumentFor')?.value || '',
+                        grantor_name: document.getElementById('workflowGrantorName')?.value || '',
+                        trust_entity_name: document.getElementById('workflowTrustEntityName')?.value || '',
+                        name: document.getElementById('workflowName')?.value || '',
+                        title: document.getElementById('workflowTitle')?.value || '',
+                        include_signature: document.getElementById('workflowIncludeSignatureBlock')?.checked || true,
+                        include_notary: document.getElementById('workflowIncludeNotaryBlock')?.checked || true,
+                        embed_notary_in_signature: document.getElementById('workflowEmbedNotaryInSignature')?.checked || true
+                    };
+                    
+                    const response = await fetch('/get_dynamic_block_preview', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        previewDiv.innerHTML = `<div style="color:#ff6b6b;">Error: ${data.error}</div>`;
+                        return;
+                    }
+                    
+                    displayWorkflowPreview(data, previewDiv);
+                    
+                } catch (error) {
+                    previewDiv.innerHTML = `<div style="color:#ff6b6b;">Error generating preview: ${error.message}</div>`;
+                }
+            }
+            
+            function displayWorkflowPreview(data, previewDiv) {
+                let previewText = '';
+                
+                // Show individual blocks when not embedded
+                if (!data.embed_notary_in_signature) {
+                    if (data.include_signature && data.signature_block) {
+                        previewText += '=== SIGNATURE BLOCK ===\n';
+                        previewText += data.signature_block + '\n\n';
+                    }
+                    
+                    if (data.include_notary && data.notary_block) {
+                        previewText += '=== NOTARY BLOCK ===\n';
+                        previewText += data.notary_block + '\n\n';
+                    }
+                }
+                
+                // Show combined block
+                if (data.combined_block) {
+                    previewText += '=== [sig/notary block] COMBINED ===\n';
+                    previewText += data.combined_block + '\n\n';
+                }
+                
+                // Show step-by-step breakdown
+                if (data.step_breakdown) {
+                    previewText += '=== STEP-BY-STEP BREAKDOWN ===\n';
+                    previewText += data.step_breakdown;
+                }
+                
+                previewDiv.innerHTML = `<pre style="margin:0; color:#b5e0ff; line-height: 1.6;">${previewText || 'No content to preview. Please configure your blocks.'}</pre>`;
+            }
+            
+            async function copyWorkflowToClipboard() {
+                try {
+                    const previewDiv = document.getElementById('workflowBlockPreview');
+                    const textContent = previewDiv.textContent || previewDiv.innerText;
+                    
+                    await navigator.clipboard.writeText(textContent);
+                    
+                    // Show success feedback
+                    const copyBtn = document.getElementById('workflowCopyToClipboard');
+                    const originalText = copyBtn.textContent;
+                    copyBtn.textContent = 'Copied!';
+                    copyBtn.style.background = '#28a745';
+                    
+                    setTimeout(() => {
+                        copyBtn.textContent = originalText;
+                        copyBtn.style.background = '#444';
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error('Failed to copy to clipboard:', error);
+                    alert('Failed to copy to clipboard: ' + error.message);
+                }
+            }
+            
+            function applyWorkflowToMainSystem() {
+                try {
+                    // Get the preview content and apply it to signature/notary blocks in the main table
+                    const previewDiv = document.getElementById('workflowBlockPreview');
+                    const previewContent = previewDiv.textContent || previewDiv.innerText;
+                    
+                    // Find and update [Signature Block] and [Signature Block With Notrary] in the main table
+                    const tableRows = document.querySelectorAll('#kvSummaryTable tbody tr');
+                    tableRows.forEach(row => {
+                        const cells = row.querySelectorAll('td');
+                        if (cells.length >= 2) {
+                            const key = cells[0].textContent.trim().toLowerCase();
+                            if (key.includes('[signature block]')) {
+                                // Update with the combined block
+                                cells[1].textContent = previewContent;
+                            }
+                        }
+                    });
+                    
+                    // Show success feedback
+                    const applyBtn = document.getElementById('workflowApplyToMain');
+                    const originalText = applyBtn.textContent;
+                    applyBtn.textContent = 'Applied!';
+                    applyBtn.style.background = '#28a745';
+                    
+                    setTimeout(() => {
+                        applyBtn.textContent = originalText;
+                        applyBtn.style.background = '#444';
+                    }, 2000);
+                    
+                    console.log('Enhanced workflow applied to main system');
+                    
+                } catch (error) {
+                    console.error('Failed to apply to main system:', error);
+                    alert('Failed to apply to main system: ' + error.message);
+                }
+            }
+            
+            function scrollToWorkflowSection(sectionId) {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth' });
+                }
             }
         });
     </script>

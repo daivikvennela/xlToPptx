@@ -344,6 +344,8 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
     for paragraph in doc.paragraphs:
         if '[Signature Block]' in paragraph.text:
             paragraph.text = paragraph.text.replace('[Signature Block]', sig_block)
+        if '[Signature Block With Notrary]' in paragraph.text:
+            paragraph.text = paragraph.text.replace('[Signature Block With Notrary]', '')
         if '[Notary Block]' in paragraph.text:
             paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
     # Also replace in tables, headers, footers, and footnotes if needed
@@ -351,6 +353,8 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
         for paragraph in block.paragraphs:
             if '[Signature Block]' in paragraph.text:
                 paragraph.text = paragraph.text.replace('[Signature Block]', sig_block)
+            if '[Signature Block With Notrary]' in paragraph.text:
+                paragraph.text = paragraph.text.replace('[Signature Block With Notrary]', '')
             if '[Notary Block]' in paragraph.text:
                 paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
         for table in getattr(block, 'tables', []):
@@ -369,6 +373,8 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
             for paragraph in footnote.paragraphs:
                 if '[Signature Block]' in paragraph.text:
                     paragraph.text = paragraph.text.replace('[Signature Block]', sig_block)
+                if '[Signature Block With Notrary]' in paragraph.text:
+                    paragraph.text = paragraph.text.replace('[Signature Block With Notrary]', '')
                 if '[Notary Block]' in paragraph.text:
                     paragraph.text = paragraph.text.replace('[Notary Block]', notary_block)
     return doc 
@@ -469,6 +475,7 @@ def build_exhibit_string(parcels):
         traceback.print_exc()
         raise
 
+# need to develop if condition to to stylstic 
 def getNotaryBlock():
     """Get hardcoded notary block template"""
     return """STATE OF [State] SS: 
@@ -491,39 +498,134 @@ def getSigBlock(ownerType: str, numSignatures: int):
     # Store the values for future use
     owner_type = ownerType
     num_signatures = numSignatures
-    filename = None
+    filename1 = None
+    filename2 = None
+    filename1Content = None
+    filename2Content = None
+    # Map owner types to template files (using files that actually exist)
     if owner_type == 'his/her sole property' and num_signatures == 1:
-        filename = 'individual_signature.txt'
-    if owner_type == 'Married Couple' and num_signatures == 2:
-        filename = 'married_couple_signature(2).txt'
-    if owner_type == 'LLC' and num_signatures == 1:
-        filename = 'llc_signature(1).txt'
-    if owner_type == 'LLC' and num_signatures == 2:
-        filename = 'llc_signature(2).txt'
-    if owner_type == 'Corporation' and num_signatures == 1:
-        filename = 'corporation_signature(1).txt'
-    if owner_type == 'Corporation' and num_signatures == 2: 
-        filename = 'corporation_signature(2).txt'
-    if owner_type == 'LP' and num_signatures == 1:    
-        filename = 'lp_signature(1).txt'
-    if owner_type == 'LP' and num_signatures == 2:
-        filename = 'lp_signature(2).txt'
-    if owner_type == 'Sole Owner, married couple' and num_signatures == 2:
-        filename = 'sole_owner_married_couple(2).txt'
-
-    # need to complete logic where further implementation will be added later
-    if filename:
-        import os
-        path = os.path.join('templates', 'sigBlocks', filename)
-        if os.path.exists(path):
-            with open(path, 'r') as f:
-                return f.read()
+        filename1 = 'SI1.txt'
+    elif owner_type == 'a married couple' and num_signatures == 2:
+        filename1 = 'I1.txt'
+        filename2 = 'I1.txt'
+    elif owner_type == 'Corporation':
+        filename1 = 'E1.txt'
+        if num_signatures == 2:
+            filename2 = 'E1.txt'
+    elif owner_type == 'LLC':
+        filename1 = 'E1.txt'
+        if num_signatures == 2:
+            filename2 = 'E1.txt'
+    elif owner_type == 'LP':    
+        filename1 = 'E1.txt'
+        if num_signatures == 2:
+            filename2 = 'E1.txt'
+    elif owner_type == 'Trust':
+        filename1 = 'E1.txt'
+        if num_signatures == 2:
+            filename2 = 'E1.txt'
+    elif owner_type == 'Sole Owner, married couple' and num_signatures == 2:
+        filename1 = 'I1.txt'
+        filename2 = 'SI1.txt'
+    elif 'individual' in owner_type.lower():
+        # Default individual case
+        filename1 = 'I1.txt'
+        if num_signatures == 2:
+            filename2 = 'I1.txt'
+    else:
+        # Default entity case
+        filename1 = 'E1.txt'
+        if num_signatures == 2:
+            filename2 = 'E1.txt'
+    import os
+    
+    # Load content from filename1 if it exists
+    if filename1:
+        path1 = os.path.join('templates', 'sigBlocks', filename1)
+        if os.path.exists(path1):
+            with open(path1, 'r') as f:
+                filename1Content = f.read().strip()
+                print(f"[DEBUG] Loaded filename1 ({filename1}): {len(filename1Content)} characters")
         else:
-            return f"Signature block template file '{filename}' not found.\nOwner Type: {owner_type}\nNumber of Signatures: {num_signatures}"
-    # Fallback sample return
-    return f"Signature Block\nOwner Type: {owner_type}\nNumber of Signatures: {num_signatures}\n\n[Signature lines would be generated here based on these values]"
+            filename1Content = f"Template file '{filename1}' not found at {path1}"
+            print(f"[ERROR] {filename1Content}")
+    
+    # Load content from filename2 if it exists  
+    if filename2:
+        path2 = os.path.join('templates', 'sigBlocks', filename2)
+        if os.path.exists(path2):
+            with open(path2, 'r') as f:
+                filename2Content = f.read().strip()
+                print(f"[DEBUG] Loaded filename2 ({filename2}): {len(filename2Content)} characters")
+        else:
+            filename2Content = f"Template file '{filename2}' not found at {path2}"
+            print(f"[ERROR] {filename2Content}")
+    
+    print(f"[DEBUG] getSigBlock returning: filename1Content={filename1Content is not None}, filename2Content={filename2Content is not None}")
+    
+    # Return array with filename1 and filename2 content
+    return [filename1Content, filename2Content]
 
 
+
+# need to fix this function 
+def notrary_generator():
+    # Read notrary.txt file content
+    import os
+    notrary_file_path = os.path.join('templates', 'Notorary', 'notrary.txt')
+    
+    try:
+        with open(notrary_file_path, 'r') as f:
+            notrary_content = f.read()
+        return notrary_content
+    except FileNotFoundError:
+        return f"Notary block template file 'notrary.txt' not found."
+    except Exception as e:
+        return f"Error reading notary block: {str(e)}"
+
+# func desc
+# sig_block is a txt file -> get sig block [file name]
+# Notrary block is a txt file -> notrary generator [string]
+# is_notray is boolean true or false [boolean]
+# num_signatures is an integer [integer]
+
+
+def generator(ownerType, is_notary, notary_block, num_signatures):
+    owner_type = ownerType
+    # Generate notary block with default parameters
+    notary_content = notrary_generator()
+    
+    # Get signature block content
+    filecontent = getSigBlock(owner_type, num_signatures)
+    sigB1 = filecontent[0] if filecontent[0] is not None else ''
+    sigB2 = filecontent[1] if filecontent[1] is not None else ''
+    
+    final_string = ""
+
+    # Edge case where there are unique sig blocks 
+    if owner_type == 'Sole owner, married couple' and is_notary:
+        final_string += sigB1
+        if is_notary and notary_content:
+            final_string += "\n\n" + notary_content
+        final_string += "\n\n" + sigB2
+        if is_notary and notary_content:
+            final_string += "\n\n" + notary_content
+
+        return final_string
+    if owner_type == 'Sole owner, married couple' and not is_notary:
+        final_string += sigB1
+        final_string += "\n\n" + sigB2
+        return final_string
+    
+    # Generate additional signature blocks based on num_signatures
+    for i in range(num_signatures):
+        if is_notary and notary_content:
+            final_string += "\n\n" + sigB1
+            final_string += "\n\n" + notary_content
+        else:
+            final_string += "\n\n" + sigB1
+
+    return final_string 
 
 
 

@@ -1,1 +1,0 @@
-sole_owner_married_couple I1 + I2
