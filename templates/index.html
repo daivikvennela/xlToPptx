@@ -2405,15 +2405,18 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 };
             }
 
-            function addImageUploadPair(key = '[Image]', value = '') {
+            function addImageUploadPair(key = '[image]', value = '') {
                 const pairId = 'pair-' + (++pairCount);
                 const div = document.createElement('div');
-                div.className = 'kv-pair-row';
-                div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                div.className = 'kv-pair-row image-upload-row';
+                div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem; border-left:3px solid #00bfff; padding-left:0.5rem;';
                 div.innerHTML = `
                     <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
                     <div style="flex:3; display:flex; flex-direction:column; gap:0.5rem;">
-                        <input type="file" class="image-upload-input" accept=".png" style="padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" onchange="handleImageUpload(this, '${pairId}')">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span style="color:#00bfff; font-size:0.9rem;">📷</span>
+                            <input type="file" class="image-upload-input" accept=".png,.jpg,.jpeg" style="padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" onchange="handleImageUpload(this, '${pairId}')">
+                        </div>
                         <div class="image-preview" id="preview-${pairId}" style="max-width:200px; max-height:150px;"></div>
                         <input type="hidden" class="kv-value" value="${value}">
                     </div>
@@ -2442,9 +2445,10 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 const hiddenInput = input.parentElement.querySelector('.kv-value');
                 
                 if (file) {
-                    // Validate file type
-                    if (file.type !== 'image/png') {
-                        alert('Please select a valid PNG image file.');
+                    // Validate file type - accept more formats
+                    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('Please select a valid image file (PNG, JPG, JPEG).');
                         input.value = '';
                         preview.innerHTML = '';
                         hiddenInput.value = '';
@@ -3209,7 +3213,13 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             kvSummaryTable.innerHTML = '';
             mapping.forEach(pair => {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
+                
+                // Check if this is an image placeholder
+                const isImagePlaceholder = pair.key.toLowerCase() === '[image]';
+                
+                row.innerHTML = `<td>${pair.key}</td><td>${isImagePlaceholder ? 
+                    '<span style="color:#00bfff;">[Image will be embedded]</span>' : 
+                    pair.value.length > 100 ? pair.value.substring(0, 100) + '...' : pair.value}</td>`;
                 kvSummaryTable.appendChild(row);
             });
             if (!mapping.some(pair => pair.key.trim().toLowerCase() === '[signature block]')) {
