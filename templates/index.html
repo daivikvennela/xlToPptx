@@ -2701,7 +2701,37 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     return;
                 }
                                 // Extract mapping
-                const mapping = kvForm.kvMapping;
+                let mapping = kvForm.kvMapping;
+
+                // If mapping is not available, try to build it from current form inputs
+                if (!mapping || !Array.isArray(mapping) || mapping.length === 0) {
+                    console.log('kvForm.kvMapping not available, building from current inputs...');
+                    const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+                    const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+                    
+                    // Check if we have valid inputs
+                    if (keys.some(k => !k)) {
+                        docxValidationMsg.textContent = 'Please fill in all placeholder fields.';
+                        docxValidationMsg.style.display = 'block';
+                        return;
+                    }
+                    
+                    if (new Set(keys).size !== keys.length) {
+                        docxValidationMsg.textContent = 'Placeholders must be unique.';
+                        docxValidationMsg.style.display = 'block';
+                        return;
+                    }
+                    
+                    // Build mapping from current inputs
+                    mapping = keys.map((k, i) => ({key: k, value: values[i]}));
+                    console.log('Built mapping from current inputs:', mapping);
+                }
+
+                if (!mapping || mapping.length === 0) {
+                    docxValidationMsg.textContent = 'Please review and submit your key-value pairs first.';
+                    docxValidationMsg.style.display = 'block';
+                    return;
+                }
                 
                 // Get document name using nameFile() function
                 const documentName = nameFile();
@@ -2987,7 +3017,37 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 docxValidationMsg.style.display = 'block';
                 return;
             }
-            const mapping = kvForm.kvMapping;
+            let mapping = kvForm.kvMapping;
+
+            // If mapping is not available, try to build it from current form inputs
+            if (!mapping || !Array.isArray(mapping) || mapping.length === 0) {
+                console.log('kvForm.kvMapping not available, building from current inputs...');
+                const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+                const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+                
+                // Check if we have valid inputs
+                if (keys.some(k => !k)) {
+                    docxValidationMsg.textContent = 'Please fill in all placeholder fields.';
+                    docxValidationMsg.style.display = 'block';
+                    return;
+                }
+                
+                if (new Set(keys).size !== keys.length) {
+                    docxValidationMsg.textContent = 'Placeholders must be unique.';
+                    docxValidationMsg.style.display = 'block';
+                    return;
+                }
+                
+                // Build mapping from current inputs
+                mapping = keys.map((k, i) => ({key: k, value: values[i]}));
+                console.log('Built mapping from current inputs:', mapping);
+            }
+
+            if (!mapping || mapping.length === 0) {
+                docxValidationMsg.textContent = 'Please review and submit your key-value pairs first.';
+                docxValidationMsg.style.display = 'block';
+                return;
+            }
             // Pass detected party type explicitly
             const partyType = document.getElementById('partyTypeDisplay').getAttribute('data-party-type') || '';
             // Get document name using nameFile() function for test file
@@ -3885,8 +3945,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         function initializeExhibitAModal() {
           console.log("Initializing Exhibit A modal");
           
-          // Only call updateParcelListDisplay() - skip updateExhibitAPreview() since elements don't exist
-          updateParcelListDisplay();
+          // Add timing delay to ensure DOM elements are ready
+          setTimeout(() => updateParcelListDisplay(), 100);
           
           // Handle modal close
           const closeBtn = document.getElementById('closeExhibitAModal');
@@ -4033,6 +4093,12 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
           const parcelListDisplay = document.getElementById('parcelListDisplay');
           const exhibitStringPreview = document.getElementById('exhibitStringPreview');
           
+          // Add null checks to prevent DOM access errors
+          if (!parcelListDisplay || !exhibitStringPreview) {
+            console.warn('updateExhibitAPreview: Required elements not found - this is expected in simplified modal');
+            return;
+          }
+          
           // Update parcel list display with template information
           parcelListDisplay.innerHTML = parcelList.map(parcel => {
             const templateLabel = parcel.isPortion ? 'Portion Template' : 'Normal Parcel Template';
@@ -4105,8 +4171,6 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
             
             console.log('Received exhibit string length:', exhibitString.length);
             
-            updateExhibitAPreview();
-            
           } catch (err) {
             console.error('Error generating exhibit string:', err);
             if (err.name === 'AbortError') {
@@ -4114,7 +4178,6 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
             } else {
               exhibitString = 'Error: ' + err.message;
             }
-            updateExhibitAPreview();
           }
         }
 

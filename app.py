@@ -1047,7 +1047,14 @@ def lease_population_replace():
             print(f"[DEBUG] Image data size: {len(exhibit_a_image_1)} characters")
         
         try:
+            # Check for undefined or invalid mapping_json
+            if not mapping_json or mapping_json.strip() == 'undefined' or mapping_json.strip() == 'null':
+                return jsonify({'error': 'No key-value mapping provided. Please review and submit your key-value pairs first.'}), 400
+            
             mapping_raw = json.loads(mapping_json)
+            if not mapping_raw or not isinstance(mapping_raw, list):
+                return jsonify({'error': 'Invalid mapping format. Please review and submit your key-value pairs first.'}), 400
+                
             mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
             
             # Add image data to mapping if available
@@ -1143,7 +1150,14 @@ def test_party_type():
     party_type = request.form.get('party_type', '').strip()
     document_name = request.form.get('document_name', 'party_type_test')
     try:
+        # Check for undefined or invalid mapping_json
+        if not mapping_json or mapping_json.strip() == 'undefined' or mapping_json.strip() == 'null':
+            return jsonify({'error': 'No key-value mapping provided. Please review and submit your key-value pairs first.'}), 400
+        
         mapping_raw = json.loads(mapping_json)
+        if not mapping_raw or not isinstance(mapping_raw, list):
+            return jsonify({'error': 'Invalid mapping format. Please review and submit your key-value pairs first.'}), 400
+            
         mapping = {item['key']: item['value'] for item in mapping_raw if item['value'].strip()}
         mapping['[Grantor Type]'] = party_type
     except Exception as e:
