@@ -2438,6 +2438,27 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 addImageUploadBtn.onclick = function() { addImageUploadPair(); };
             }
 
+
+            // Create Exhibit A modal immediately before button creation
+            if (!document.getElementById("exhibitAModal")) {
+                const modal = document.createElement("div");
+                modal.id = "exhibitAModal";
+                modal.style = "display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;";
+                modal.innerHTML = `
+                  <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:800px; max-width:95vw; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 8px 32px #0008;">
+                    <button id="closeExhibitAModal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    <h2 style="color:#00bfff; margin-bottom:1.5rem;">Generate Exhibit A</h2>
+                    <div id="parcelListContainer" style="margin-bottom:1.5rem;"></div>
+                    <button id="addParcelBtn" class="secondary-btn" style="margin-bottom:1rem;">Add Parcel</button>
+                    <div style="text-align:center; margin-top:1.5rem;">
+                      <button id="modalGenerateExhibitABtn" class="submit-btn" style="margin-right:1rem;">Generate Exhibit A</button>
+                      <button id="cancelExhibitABtn" class="secondary-btn">Cancel</button>
+                    </div>
+                  </div>
+                `;
+                document.body.appendChild(modal);
+                console.log("Exhibit A modal created successfully");
+              }
             // Add Generate Exhibit A button
             addPairBtn.insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openExhibitAModalBtn" style="margin-left:1rem;">Generate Exhibit A (v2.2)</button>');
             
@@ -3856,55 +3877,6 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
 
         };
 
-        // Create Exhibit A modal immediately when page loads
-        function createExhibitAModal() {
-          if (!document.getElementById('exhibitAModal')) {
-            const modal = document.createElement('div');
-            modal.id = 'exhibitAModal';
-            modal.style = 'display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;';
-            modal.innerHTML = `
-              <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:800px; max-width:95vw; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 8px 32px #0008;">
-                <button id="closeExhibitAModal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
-                <h2 style="color:#00bfff; margin-bottom:1.5rem;">Generate Exhibit A</h2>
-                
-                <!-- Step 1: Parcel Configuration -->
-                <div id="parcelConfigSection">
-                  <h3 style="color:#b5e0ff; margin-bottom:1rem;">Step 1: Configure Parcels</h3>
-                  <div id="parcelListContainer" style="margin-bottom:1.5rem;"></div>
-                  <button id="addParcelBtn" class="secondary-btn" style="margin-bottom:1rem;">Add Parcel</button>
-                </div>
-                
-
-                
-                <!-- Step 3: Live Preview -->
-                <div id="previewSection">
-                  <h3 style="color:#b5e0ff; margin-bottom:1rem;">Step 3: Preview</h3>
-                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
-                    <div>
-                      <h4 style="color:#e2e8f0; margin-bottom:0.5rem;">Parcel List:</h4>
-                      <div id="parcelListDisplay" style="background:rgba(26,26,46,0.6); padding:1rem; border-radius:8px; max-height:200px; overflow-y:auto;"></div>
-                    </div>
-                    <div>
-                      <h4 style="color:#e2e8f0; margin-bottom:0.5rem;">Exhibit String Preview:</h4>
-                      <textarea id="exhibitStringPreview" style="width:100%; min-height:200px; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.6); color:#e2e8f0; font-family:monospace; font-size:0.9rem;" readonly></textarea>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Action Buttons -->
-                <div style="text-align:center; margin-top:1.5rem;">
-                  <button id="modalGenerateExhibitABtn" class="submit-btn" style="margin-right:1rem;">Generate Exhibit A</button>
-                  <button id="cancelExhibitABtn" class="secondary-btn">Cancel</button>
-                </div>
-              </div>
-            `;
-            document.body.appendChild(modal);
-            console.log('Exhibit A modal created successfully');
-          }
-        }
-        
-        // Create modal immediately
-        createExhibitAModal();
 
         // Event handler for Generate Exhibit A button already attached above
 
