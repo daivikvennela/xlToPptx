@@ -3534,6 +3534,51 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // Open Sig Block Builder button moved to form - DISABLED
         // document.getElementById('openExhibitAModalBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-left:1rem;" disabled>Open Sig Block Builder</button>');
         
+        // Add event listener for Generate Exhibit A button immediately after creation
+        const openExhibitAModalBtn = document.getElementById('openExhibitAModalBtn');
+        if (openExhibitAModalBtn) {
+            console.log('Found openExhibitAModalBtn, attaching event handler');
+            openExhibitAModalBtn.onclick = async function() {
+                // Parse # of Parcels from the table
+                let numParcels = 0;
+                Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
+                    const keyInput = row.querySelector('.kv-key');
+                    const valueInput = row.querySelector('.kv-value, textarea.kv-value');
+                    const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
+                    
+                    if (key === '# of parcels' || key === 'number of parcels' || key === 'parcels') {
+                        numParcels = parseInt(valueInput.value.trim()) || 0;
+                    }
+                });
+
+                if (numParcels <= 0) {
+                    alert('Please add a "# of Parcels" field to your table with a valid number.');
+                    return;
+                }
+
+                // Initialize Exhibit A workflow
+                parcelList = [];
+                exhibitString = '';
+                exhibitImage = null;
+                
+                // Create initial parcel objects with validation
+                for (let i = 1; i <= numParcels; i++) {
+                    parcelList.push(new Parcel(i));
+                }
+                
+                // Show the comprehensive modal
+                const modal = document.getElementById('exhibitAModal');
+                modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
+                
+                // Initialize the modal
+                initializeExhibitAModal();
+            };
+        } else {
+            console.error('openExhibitAModalBtn not found - button may not be created yet');
+        }
+        
         // Add event listener for the Open Sig Block Builder button
         document.getElementById('openSigNotBuilderBtn').addEventListener('click', function() {
             const kvSummarySection = document.getElementById('kvSummarySection');
@@ -3664,6 +3709,15 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             this.parcelNumber = parcelNumber;
             this.isPortion = false; // Legacy support
             this.templateType = 'normal'; // New template selection
+          }
+          
+          // Method to convert to JSON format for backend
+          toJSON() {
+            return {
+              parcelNumber: this.parcelNumber,
+              isPortion: this.isPortion,
+              templateType: this.templateType
+            };
           }
         }
 
@@ -3830,50 +3884,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
           document.body.appendChild(modal);
         }
 
-        // Add event handler for Generate Exhibit A button
-        const openExhibitAModalBtn = document.getElementById('openExhibitAModalBtn');
-        if (openExhibitAModalBtn) {
-          console.log('Found openExhibitAModalBtn, attaching event handler');
-          openExhibitAModalBtn.onclick = async function() {
-          // Parse # of Parcels from the table
-          let numParcels = 0;
-          Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
-            const keyInput = row.querySelector('.kv-key');
-            const valueInput = row.querySelector('.kv-value, textarea.kv-value');
-            const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
-            
-            if (key === '# of parcels' || key === 'number of parcels' || key === 'parcels') {
-              numParcels = parseInt(valueInput.value.trim()) || 0;
-            }
-          });
-
-          if (numParcels <= 0) {
-            alert('Please add a "# of Parcels" field to your table with a valid number.');
-            return;
-          }
-
-          // Initialize Exhibit A workflow
-          parcelList = [];
-          exhibitString = '';
-          exhibitImage = null;
-          
-          // Create initial parcel objects with validation
-          for (let i = 1; i <= numParcels; i++) {
-            parcelList.push(new Parcel(i));
-          }
-          
-          // Show the comprehensive modal
-          const modal = document.getElementById('exhibitAModal');
-          modal.style.display = 'flex';
-          modal.style.alignItems = 'center';
-          modal.style.justifyContent = 'center';
-          
-          // Initialize the modal
-          initializeExhibitAModal();
-        };
-        } else {
-          console.error('openExhibitAModalBtn not found - button may not be created yet');
-        }
+        // Event handler for Generate Exhibit A button already attached above
 
         // Function to initialize the Exhibit A modal
         function initializeExhibitAModal() {
@@ -4021,7 +4032,15 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
         async function generateExhibitString() {
           try {
             const formData = new FormData();
-            formData.append('parcels', JSON.stringify(parcelList));
+            
+            // Convert parcel objects to JSON format for backend
+            const parcelsForBackend = parcelList.map(parcel => ({
+              parcelNumber: parcel.parcelNumber,
+              isPortion: parcel.isPortion,
+              templateType: parcel.templateType
+            }));
+            
+            formData.append('parcels', JSON.stringify(parcelsForBackend));
             
             // Add timeout protection (60 seconds for large files)
             const controller = new AbortController();
