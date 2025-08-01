@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Exhibit A Debug</title>
+</head>
+<body>
+    <h1>Test Exhibit A Debug</h1>
+    
+    <div id="kvPairsContainer">
+        <div class="kv-pair-row">
+            <input type="text" class="kv-key" value="# of Parcels">
+            <input type="text" class="kv-value" value="2">
+        </div>
+    </div>
+    
+    <button id="addPairBtn">Add another pair</button>
+    <button id="openExhibitAModalBtn">Generate Exhibit A (v2.1)</button>
+    
+    <script>
+        // Test the button creation and event handler
+        console.log('Testing Exhibit A functionality...');
+        
+        // Create modal immediately
+        function createExhibitAModal() {
+            if (!document.getElementById('exhibitAModal')) {
+                const modal = document.createElement('div');
+                modal.id = 'exhibitAModal';
+                modal.style = 'display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;';
+                modal.innerHTML = `
+                    <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:800px; max-width:95vw; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 8px 32px #0008;">
+                        <button id="closeExhibitAModal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
+                        <h2 style="color:#00bfff; margin-bottom:1.5rem;">Generate Exhibit A</h2>
+                        <div id="parcelListContainer" style="margin-bottom:1.5rem;"></div>
+                        <button id="addParcelBtn" class="secondary-btn" style="margin-bottom:1rem;">Add Parcel</button>
+                        <div style="text-align:center; margin-top:1.5rem;">
+                            <button id="modalGenerateExhibitABtn" class="submit-btn" style="margin-right:1rem;">Generate Exhibit A</button>
+                            <button id="cancelExhibitABtn" class="secondary-btn">Cancel</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                console.log('Exhibit A modal created successfully');
+            }
+        }
+        
+        // Create modal immediately
+        createExhibitAModal();
+        
+        // Add button after addPairBtn
+        document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openExhibitAModalBtn" style="margin-left:1rem;">Generate Exhibit A (v2.1)</button>');
+        
+        // Add event listener
+        const openExhibitAModalBtn = document.getElementById('openExhibitAModalBtn');
+        if (openExhibitAModalBtn) {
+            console.log('Found openExhibitAModalBtn, attaching event handler');
+            openExhibitAModalBtn.onclick = async function() {
+                console.log('Generate Exhibit A button clicked!');
+                
+                // Parse # of Parcels from the table
+                let numParcels = 0;
+                Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
+                    const keyInput = row.querySelector('.kv-key');
+                    const valueInput = row.querySelector('.kv-value');
+                    const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
+                    
+                    if (key === '# of parcels' || key === 'number of parcels' || key === 'parcels') {
+                        numParcels = parseInt(valueInput.value.trim()) || 0;
+                    }
+                });
+
+                console.log('Found parcels:', numParcels);
+
+                if (numParcels <= 0) {
+                    alert('Please add a "# of Parcels" field to your table with a valid number.');
+                    return;
+                }
+
+                // Show the modal
+                const modal = document.getElementById('exhibitAModal');
+                console.log('Modal element:', modal);
+                
+                if (modal) {
+                    modal.style.display = 'flex';
+                    modal.style.alignItems = 'center';
+                    modal.style.justifyContent = 'center';
+                    console.log('Modal should be visible now');
+                    
+                    // Add close handler
+                    document.getElementById('closeExhibitAModal').onclick = function() {
+                        modal.style.display = 'none';
+                    };
+                    
+                    document.getElementById('cancelExhibitABtn').onclick = function() {
+                        modal.style.display = 'none';
+                    };
+                } else {
+                    console.error('Modal not found!');
+                    alert('Error: Modal not found. Please refresh the page and try again.');
+                }
+            };
+        } else {
+            console.error('openExhibitAModalBtn not found - button may not be created yet');
+        }
+    </script>
+</body>
+</html> 

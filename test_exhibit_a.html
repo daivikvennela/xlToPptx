@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Exhibit A Functionality</title>
+</head>
+<body>
+    <h1>Test Exhibit A Functionality</h1>
+    
+    <div id="kvPairsContainer">
+        <div class="kv-pair-row">
+            <input type="text" class="kv-key" value="# of Parcels">
+            <input type="text" class="kv-value" value="2">
+        </div>
+    </div>
+    
+    <button id="openExhibitAModalBtn">Generate Exhibit A</button>
+    
+    <script>
+        // Simplified test version
+        class Parcel {
+            constructor(parcelNumber) {
+                this.parcelNumber = parcelNumber;
+                this.isPortion = false;
+                this.templateType = 'normal';
+            }
+        }
+        
+        let parcelList = [];
+        let exhibitString = '';
+        
+        document.getElementById('openExhibitAModalBtn').onclick = async function() {
+            console.log('Button clicked!');
+            
+            // Parse # of Parcels from the table
+            let numParcels = 0;
+            Array.from(document.querySelectorAll('#kvPairsContainer .kv-pair-row')).forEach(row => {
+                const keyInput = row.querySelector('.kv-key');
+                const valueInput = row.querySelector('.kv-value');
+                const key = keyInput ? keyInput.value.trim().toLowerCase() : '';
+                
+                if (key === '# of parcels' || key === 'number of parcels' || key === 'parcels') {
+                    numParcels = parseInt(valueInput.value.trim()) || 0;
+                }
+            });
+
+            console.log('Found parcels:', numParcels);
+
+            if (numParcels <= 0) {
+                alert('Please add a "# of Parcels" field to your table with a valid number.');
+                return;
+            }
+
+            // Initialize Exhibit A workflow
+            parcelList = [];
+            
+            // Create initial parcel objects
+            for (let i = 1; i <= numParcels; i++) {
+                parcelList.push(new Parcel(i));
+            }
+            
+            console.log('Created parcels:', parcelList);
+            
+            // Test the backend call
+            try {
+                const formData = new FormData();
+                
+                // Convert parcel objects to JSON format for backend
+                const parcelsForBackend = parcelList.map(parcel => ({
+                    parcelNumber: parcel.parcelNumber,
+                    isPortion: parcel.isPortion,
+                    templateType: parcel.templateType
+                }));
+                
+                formData.append('parcels', JSON.stringify(parcelsForBackend));
+                
+                console.log('Sending to backend:', parcelsForBackend);
+                
+                const response = await fetch('/gen_exhibit_a', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to generate exhibit string');
+                }
+                
+                const data = await response.json();
+                exhibitString = data.exhibit_string || 'Error generating exhibit string';
+                
+                console.log('Success! Received exhibit string length:', exhibitString.length);
+                console.log('First 200 characters:', exhibitString.substring(0, 200));
+                
+                alert('Success! Generated Exhibit A with ' + exhibitString.length + ' characters');
+                
+            } catch (err) {
+                console.error('Error generating exhibit string:', err);
+                alert('Error: ' + err.message);
+            }
+        };
+    </script>
+</body>
+</html> 

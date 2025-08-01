@@ -3883,49 +3883,67 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
 
         // Function to initialize the Exhibit A modal
         function initializeExhibitAModal() {
+          console.log("Initializing Exhibit A modal");
+          
+          // Only call updateParcelListDisplay() - skip updateExhibitAPreview() since elements don't exist
           updateParcelListDisplay();
-          updateExhibitAPreview();
           
           // Handle modal close
-          document.getElementById('closeExhibitAModal').onclick = function() {
-            document.getElementById('exhibitAModal').style.display = 'none';
-          };
+          const closeBtn = document.getElementById('closeExhibitAModal');
+          if (closeBtn) {
+            closeBtn.onclick = function() {
+              document.getElementById('exhibitAModal').style.display = 'none';
+            };
+          }
           
           // Handle cancel
-          document.getElementById('cancelExhibitABtn').onclick = function() {
-            document.getElementById('exhibitAModal').style.display = 'none';
-          };
+          const cancelBtn = document.getElementById('cancelExhibitABtn');
+          if (cancelBtn) {
+            cancelBtn.onclick = function() {
+              document.getElementById('exhibitAModal').style.display = 'none';
+            };
+          }
           
           // Handle add parcel button
-          document.getElementById('addParcelBtn').onclick = function() {
-            const newParcelNumber = parcelList.length + 1;
-            parcelList.push(new Parcel(newParcelNumber));
-            updateParcelListDisplay();
-          };
+          const addParcelBtn = document.getElementById('addParcelBtn');
+          if (addParcelBtn) {
+            addParcelBtn.onclick = function() {
+              const newParcelNumber = parcelList.length + 1;
+              parcelList.push(new Parcel(newParcelNumber));
+              updateParcelListDisplay();
+              console.log("Added parcel:", newParcelNumber);
+            };
+          }
           
-
-          
-          // Handle generate button
+          // Handle generate button - THIS IS THE KEY FIX
           const modalGenerateBtn = document.getElementById('modalGenerateExhibitABtn');
           if (modalGenerateBtn) {
             console.log('Found modalGenerateExhibitABtn, attaching event handler');
             modalGenerateBtn.onclick = async function() {
+              console.log('Modal generate button clicked!');
+              
               // Show loading state
               modalGenerateBtn.disabled = true;
               modalGenerateBtn.textContent = 'Generating...';
               
               try {
+                console.log('Calling generateExhibitString()...');
                 await generateExhibitString();
+                console.log('Exhibit string generated, calling addExhibitAToForm()...');
                 addExhibitAToForm();
+                console.log('Exhibit A added to form, closing modal...');
                 document.getElementById('exhibitAModal').style.display = 'none';
+                console.log('Modal closed successfully!');
               } catch (err) {
                 console.error('Error in generate button handler:', err);
+                alert('Error generating Exhibit A: ' + err.message);
               } finally {
                 // Reset button state
                 modalGenerateBtn.disabled = false;
                 modalGenerateBtn.textContent = 'Generate Exhibit A';
               }
             };
+            console.log('Event handler attached successfully to modalGenerateExhibitABtn');
           } else {
             console.error('modalGenerateExhibitABtn not found in modal');
           }
@@ -3934,6 +3952,11 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // Function to update parcel list display
         function updateParcelListDisplay() {
           const container = document.getElementById('parcelListContainer');
+          if (!container) {
+            console.warn('parcelListContainer not found - modal may not be open yet');
+            return;
+          }
+          
           container.innerHTML = parcelList.map((parcel, index) => `
             <div style="background:rgba(26,26,46,0.4); padding:1rem; border-radius:8px; margin-bottom:1rem; border:1px solid #00bfff;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
@@ -3972,7 +3995,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         function removeParcel(index) {
           parcelList.splice(index, 1);
           updateParcelListDisplay();
-          updateExhibitAPreview();
+          // Removed updateExhibitAPreview() call since elements don't exist in simplified modal
         }
 
         // Function to update parcel portion status
@@ -3981,7 +4004,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
           // Automatically set template type based on isPortion
           parcelList[index].templateType = isPortion ? 'portion' : 'normal';
           updateParcelListDisplay();
-          updateExhibitAPreview();
+          // Removed updateExhibitAPreview() call since elements don't exist in simplified modal
         }
 
         // Function to get filled template preview
@@ -4021,6 +4044,29 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
           
           // Update exhibit string preview (will be populated after backend call)
           exhibitStringPreview.value = exhibitString || 'Exhibit string will be generated when you click "Generate Exhibit A"...';
+        }
+
+        // Debug function to test the flow
+        function debugExhibitAFlow() {
+          console.log("=== DEBUG: Exhibit A Flow ===");
+          console.log("Modal exists:", document.getElementById('exhibitAModal'));
+          console.log("Generate button exists:", document.getElementById('modalGenerateExhibitABtn'));
+          console.log("Parcel container exists:", document.getElementById('parcelListContainer'));
+          console.log("Parcel list:", parcelList);
+          console.log("Parcel count:", parcelList.length);
+          
+          // Test if the problematic function works
+          try {
+            updateExhibitAPreview();
+            console.log("updateExhibitAPreview() works");
+          } catch (error) {
+            console.error("updateExhibitAPreview() fails:", error);
+          }
+          
+          // Test if the core functions exist
+          console.log("generateExhibitString exists:", typeof generateExhibitString);
+          console.log("addExhibitAToForm exists:", typeof addExhibitAToForm);
+          console.log("updateParcelListDisplay exists:", typeof updateParcelListDisplay);
         }
 
         // Function to generate exhibit string
