@@ -3354,7 +3354,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         observer.observe(document.getElementById('kvPairsContainer'), { childList: true, subtree: false });
 
         // Add the button next to 'Add another pair'
-        document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="fillSigNotaryBtn" style="margin-left:1rem;">Fill Signature and Notary Block</button>');
+        document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="fillSigNotaryBtn" style="margin-left:1rem;" disabled>Fill Signature and Notary Block</button>');
 
         // Add a section for template preview
         const previewSection = document.createElement('div');
