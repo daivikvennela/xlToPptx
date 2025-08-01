@@ -1210,11 +1210,13 @@
                         <div id="kvPairsContainer">
                             <!-- Dynamic key-value pairs will be inserted here -->
                         </div>
-                        <!-- Temp Quick Fill Buttons -->
+                        <!-- Temp Quick Fill Buttons - DISABLED/COMMENTED OUT -->
+                        <!--
                         <div style="margin-bottom: 1rem;">
                             <button type="button" class="secondary-btn" id="quickFillSigBlockBtnTemp" style="margin-right:1rem;" disabled>Quick Fill Signature Block Temp</button>
                             <button type="button" class="secondary-btn" id="quickFillNotaryBlockBtnTemp" disabled>Quick Fill Notary Block Temp</button>
                         </div>
+                        -->
                         <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
                         <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
                         <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
@@ -3537,7 +3539,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             }
         });
 
-        // Add temp Quick Fill button functionality
+        // Add temp Quick Fill button functionality - DISABLED/COMMENTED OUT
+        /*
         document.getElementById('quickFillSigBlockBtnTemp').onclick = async function() {
           // Extract [Owner Type] and [Number of Grantor Signatures] from kvPairsContainer
           let ownerType = '';
@@ -3599,6 +3602,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             alert('Error loading signature block: ' + err.message);
           }
         };
+        */
 
 
 
