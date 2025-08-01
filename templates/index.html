@@ -1220,7 +1220,10 @@
                         <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
                         <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
                         <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
-                        <button type="button" class="secondary-btn" id="exportJsonBtn" style="margin-top:1rem;">Export Mapping as JSON</button>
+                        <div style="margin-top:1rem; display:flex; gap:1rem;">
+                            <button type="button" class="secondary-btn" id="exportJsonBtn" disabled>Export Mapping as JSON</button>
+                            <button type="button" class="secondary-btn" id="openSigNotBuilderBtn" disabled>Open Sig Block Builder</button>
+                        </div>
                     </form>
                 </div>
                 <div id="inputMethodUpload" style="display:none;">
@@ -3518,7 +3521,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Signature Block</button>');
         // document.getElementById('quickFillSigBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillNotaryBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Notary Block</button>');
         document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openExhibitAModalBtn" style="margin-left:1rem;">Generate Exhibit A</button>');
-        document.getElementById('openExhibitAModalBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-left:1rem;" disabled>Open Sig Block Builder</button>');
+        // Open Sig Block Builder button moved to form - DISABLED
+        // document.getElementById('openExhibitAModalBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-left:1rem;" disabled>Open Sig Block Builder</button>');
         
         // Add event listener for the Open Sig Block Builder button
         document.getElementById('openSigNotBuilderBtn').addEventListener('click', function() {
