@@ -381,7 +381,7 @@ def replace_signature_and_notary_blocks(doc: Document, mapping: dict):
 
 def build_exhibit_string(parcels):
     """
-    Build the Exhibit A text string from templates and parcel data with dynamic template selection.
+    Build the Exhibit A text string from parcel data (simplified version).
     
     Args:
         parcels: List of parcel objects with parcelNumber, isPortion, and templateType properties
@@ -396,75 +396,34 @@ def build_exhibit_string(parcels):
         if not isinstance(parcels, list) or len(parcels) == 0:
             raise ValueError("Parcels must be a non-empty list")
         
-        # Define template file paths for normal and portion templates
-        template_paths = {
-            'normal': os.path.join('templates', 'exhibit', 'normal_portion.txt'),
-            'portion': os.path.join('templates', 'exhibit', 'portion_description.txt')
-        }
-        
-        # Define default content for each template type
-        default_templates = {
-            'normal': "Parcel [i]:\n\nA parcel of the property described as follows...",
-            'portion': "Portion [i]:\n\nThis portion of the property is described as follows..."
-        }
-        
-        # Create template files if they don't exist
-        for template_type, path in template_paths.items():
-            try:
-                if not os.path.exists(path):
-                    os.makedirs(os.path.dirname(path), exist_ok=True)
-                    with open(path, 'w', encoding='utf-8') as f:
-                        f.write(default_templates[template_type])
-                    print(f"[DEBUG] Created template file: {path}")
-            except Exception as e:
-                print(f"[ERROR] Failed to create template file {path}: {str(e)}")
-        
-        # Read general description template
-        gen_desc_path = os.path.join('templates', 'exhibit', 'general_description.txt')
-        try:
-            if not os.path.exists(gen_desc_path):
-                os.makedirs(os.path.dirname(gen_desc_path), exist_ok=True)
-                with open(gen_desc_path, 'w', encoding='utf-8') as f:
-                    f.write("EXHIBIT A\n\nGeneral Description of Property\n\nThis exhibit contains the legal description of the property subject to this agreement.")
-            
-            with open(gen_desc_path, 'r', encoding='utf-8') as f:
-                general_description = f.read().strip()
-        except FileNotFoundError:
-            general_description = "EXHIBIT A\n\nGeneral Description of Property\n\nThis exhibit contains the legal description of the property subject to this agreement."
-        
-        # Build the exhibit string
-        exhibit_parts = [general_description]
+        # Start with header
+        exhibit_parts = ["EXHIBIT A", "", "General Description of Property", ""]
         
         # Add image placeholder
-        exhibit_parts.append("\n[Image]\n")
+        exhibit_parts.append("[Image]")
+        exhibit_parts.append("")
         
-        # Add parcel descriptions with dynamic template selection
+        # Add parcel descriptions
         for i, parcel in enumerate(parcels, 1):
-            if not isinstance(parcel, dict) or 'parcelNumber' not in parcel:
+            if not isinstance(parcel, dict) or "parcelNumber" not in parcel:
                 print(f"[WARNING] Invalid parcel data at index {i}: {parcel}")
                 continue
             
-            parcel_number = parcel.get('parcelNumber', i)
-            is_portion = parcel.get('isPortion', False)
-            template_type = 'portion' if is_portion else 'normal'
+            parcel_number = parcel.get("parcelNumber", i)
+            is_portion = parcel.get("isPortion", False)
             
-            # Read the selected template
-            template_path = template_paths[template_type]
-            try:
-                with open(template_path, 'r', encoding='utf-8') as f:
-                    template_content = f.read().strip()
-            except FileNotFoundError:
-                print(f"[WARNING] Template file not found: {template_path}, using default")
-                template_content = default_templates[template_type]
+            # Simple template based on parcel type
+            if is_portion:
+                parcel_description = f"Portion {parcel_number}:\n\nThis portion of the property is described as follows: [Legal description for portion {parcel_number}]"
+            else:
+                parcel_description = f"Parcel {parcel_number}:\n\nA parcel of the property described as follows: [Legal description for parcel {parcel_number}]"
             
-            # Replace placeholder with parcel number
-            parcel_description = template_content.replace('[i]', str(parcel_number))
-            
-            print(f"[DEBUG] Parcel {parcel_number}: Using template '{template_type}' (isPortion: {is_portion})")
-            exhibit_parts.append(f"\n{parcel_description}")
+            print(f"[DEBUG] Parcel {parcel_number}: {{\"Portion\" if is_portion else \"Parcel\"}} (isPortion: {is_portion})")
+            exhibit_parts.append(parcel_description)
+            exhibit_parts.append("")  # Add spacing between parcels
         
         # Join all parts
-        exhibit_string = '\n'.join(exhibit_parts)
+        exhibit_string = "\n".join(exhibit_parts)
         
         print(f"[DEBUG] Generated exhibit string, length: {len(exhibit_string)}")
         return exhibit_string
@@ -473,9 +432,7 @@ def build_exhibit_string(parcels):
         print(f"[ERROR] Failed to build exhibit string: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise
-
-# need to develop if condition to to stylstic 
+        raise\n\n# need to develop if condition to to stylstic 
 def getNotaryBlock():
     """Get hardcoded notary block template"""
     return """STATE OF [State] SS: 

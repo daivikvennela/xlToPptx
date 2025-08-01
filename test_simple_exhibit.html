@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Exhibit A Test</title>
+</head>
+<body>
+    <h1>Simple Exhibit A Test</h1>
+    
+    <button onclick="testExhibitA()">Test Exhibit A Generation</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testExhibitA() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing...';
+            
+            try {
+                // Create simple test data
+                const testParcels = [
+                    { parcelNumber: 1, isPortion: false, templateType: 'normal' },
+                    { parcelNumber: 2, isPortion: true, templateType: 'portion' }
+                ];
+                
+                const formData = new FormData();
+                formData.append('parcels', JSON.stringify(testParcels));
+                
+                console.log('Sending test data:', testParcels);
+                
+                const response = await fetch('/gen_exhibit_a', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to generate exhibit string');
+                }
+                
+                const data = await response.json();
+                const exhibitString = data.exhibit_string || 'Error generating exhibit string';
+                
+                console.log('Success! Received exhibit string length:', exhibitString.length);
+                console.log('First 500 characters:', exhibitString.substring(0, 500));
+                
+                resultDiv.innerHTML = `
+                    <h3>✅ Success!</h3>
+                    <p><strong>Generated Exhibit A with ${exhibitString.length} characters</strong></p>
+                    <pre style="background:#f0f0f0; padding:10px; max-height:300px; overflow-y:auto;">${exhibitString}</pre>
+                `;
+                
+            } catch (err) {
+                console.error('Error generating exhibit string:', err);
+                resultDiv.innerHTML = `
+                    <h3>❌ Error!</h3>
+                    <p><strong>Error:</strong> ${err.message}</p>
+                    <pre style="background:#ffe0e0; padding:10px;">${err.stack}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
