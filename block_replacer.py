@@ -432,7 +432,9 @@ def build_exhibit_string(parcels):
         print(f"[ERROR] Failed to build exhibit string: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise\n\n# need to develop if condition to to stylstic 
+        raise
+
+# need to develop if condition to to stylstic 
 def getNotaryBlock():
     """Get hardcoded notary block template"""
     return """STATE OF [State] SS: 
