@@ -3355,8 +3355,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         const observer = new MutationObserver(ensurePartyBlockInputsExist);
         observer.observe(document.getElementById('kvPairsContainer'), { childList: true, subtree: false });
 
-        // Add the button next to 'Add another pair'
-        document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="fillSigNotaryBtn" style="margin-left:1rem;" disabled>Fill Signature and Notary Block</button>');
+        // Add the button next to 'Add another pair' - DISABLED/COMMENTED OUT
+        // document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="fillSigNotaryBtn" style="margin-left:1rem;" disabled>Fill Signature and Notary Block</button>');
 
         // Add a section for template preview
         const previewSection = document.createElement('div');
@@ -3364,7 +3364,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         previewSection.style = 'display:none; margin:1.5rem 0; background:rgba(26,26,46,0.8); border-radius:12px; padding:1.5rem; border:1px solid #00bfff;';
         document.getElementById('kvForm').parentNode.insertBefore(previewSection, document.getElementById('kvForm').nextSibling);
 
-        // Handler for the new button
+        // Handler for the new button - DISABLED/COMMENTED OUT
+        /*
         let sigNotaryTemplates = { signature: '', notary: '' };
         document.getElementById('fillSigNotaryBtn').onclick = async function() {
             // Detect grantor type
@@ -3487,6 +3488,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 };
             };
         };
+        */
 
         // Show Owner/Signature Info Button Handler - DISABLED FOR NOW
         /*
@@ -3512,10 +3514,10 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         };
         */
 
-        // After the line that adds the Fill Signature and Notary Block button:
-        document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Signature Block</button>');
-        document.getElementById('quickFillSigBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillNotaryBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Notary Block</button>');
-        document.getElementById('quickFillNotaryBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openExhibitAModalBtn" style="margin-left:1rem;">Generate Exhibit A</button>');
+        // After the line that adds the Fill Signature and Notary Block button - DISABLED/COMMENTED OUT:
+        // document.getElementById('fillSigNotaryBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillSigBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Signature Block</button>');
+        // document.getElementById('quickFillSigBlockBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="quickFillNotaryBlockBtn" style="margin-left:1rem;" disabled>Quick Fill Notary Block</button>');
+        document.getElementById('addPairBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openExhibitAModalBtn" style="margin-left:1rem;">Generate Exhibit A</button>');
         document.getElementById('openExhibitAModalBtn').insertAdjacentHTML('afterend', '<button type="button" class="secondary-btn" id="openSigNotBuilderBtn" style="margin-left:1rem;" disabled>Open Sig Block Builder</button>');
         
         // Add event listener for the Open Sig Block Builder button
