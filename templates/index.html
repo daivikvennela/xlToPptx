@@ -3883,62 +3883,51 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
 
         // Function to initialize the Exhibit A modal
         function initializeExhibitAModal() {
-          console.log("Initializing simplified Exhibit A modal");
+          updateParcelListDisplay();
+          updateExhibitAPreview();
           
           // Handle modal close
-          const closeBtn = document.getElementById("closeExhibitAModal");
-          if (closeBtn) {
-            closeBtn.onclick = function() {
-              document.getElementById("exhibitAModal").style.display = "none";
-            };
-          }
+          document.getElementById('closeExhibitAModal').onclick = function() {
+            document.getElementById('exhibitAModal').style.display = 'none';
+          };
           
           // Handle cancel
-          const cancelBtn = document.getElementById("cancelExhibitABtn");
-          if (cancelBtn) {
-            cancelBtn.onclick = function() {
-              document.getElementById("exhibitAModal").style.display = "none";
-            };
-          }
+          document.getElementById('cancelExhibitABtn').onclick = function() {
+            document.getElementById('exhibitAModal').style.display = 'none';
+          };
           
           // Handle add parcel button
-          const addParcelBtn = document.getElementById("addParcelBtn");
-          if (addParcelBtn) {
-            addParcelBtn.onclick = function() {
-              const newParcelNumber = parcelList.length + 1;
-              parcelList.push(new Parcel(newParcelNumber));
-              console.log("Added parcel:", newParcelNumber);
-              console.log("Total parcels:", parcelList.length);
-            };
-          }
+          document.getElementById('addParcelBtn').onclick = function() {
+            const newParcelNumber = parcelList.length + 1;
+            parcelList.push(new Parcel(newParcelNumber));
+            updateParcelListDisplay();
+          };
+          
+
           
           // Handle generate button
-          const modalGenerateBtn = document.getElementById("modalGenerateExhibitABtn");
+          const modalGenerateBtn = document.getElementById('modalGenerateExhibitABtn');
           if (modalGenerateBtn) {
-            console.log("Found modalGenerateExhibitABtn, attaching event handler");
+            console.log('Found modalGenerateExhibitABtn, attaching event handler');
             modalGenerateBtn.onclick = async function() {
-              console.log("Modal generate button clicked!");
-              
               // Show loading state
               modalGenerateBtn.disabled = true;
-              modalGenerateBtn.textContent = "Generating...";
+              modalGenerateBtn.textContent = 'Generating...';
               
               try {
                 await generateExhibitString();
                 addExhibitAToForm();
-                document.getElementById("exhibitAModal").style.display = "none";
-                console.log("Exhibit A generated and added to form successfully");
+                document.getElementById('exhibitAModal').style.display = 'none';
               } catch (err) {
-                console.error("Error in generate button handler:", err);
-                alert("Error generating Exhibit A: " + err.message);
+                console.error('Error in generate button handler:', err);
               } finally {
                 // Reset button state
                 modalGenerateBtn.disabled = false;
-                modalGenerateBtn.textContent = "Generate Exhibit A";
+                modalGenerateBtn.textContent = 'Generate Exhibit A';
               }
             };
           } else {
-            console.error("modalGenerateExhibitABtn not found in modal");
+            console.error('modalGenerateExhibitABtn not found in modal');
           }
         }
 
