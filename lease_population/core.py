@@ -12,7 +12,7 @@ from docx.shared import Pt
 from flask import jsonify, send_file
 from .utils import normalize_placeholder_key, strip_brackets
 from .image_handler import ImageEmbeddingHandler
-from block_replacer import embedImage, generate_signature_block, generate_notary_block
+from .block_replacer import embedImage, generate_signature_block, generate_notary_block
 
 
 class LeasePopulationProcessor:
@@ -59,6 +59,42 @@ class LeasePopulationProcessor:
             print(f"TRACEBACK: {error_traceback}")
             return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
     
+    def process_lease_population_enhanced(self, docx_file, mapping_json, track_changes=False, 
+                                        document_name='lease_population_filled', image_files=None, 
+                                        watermark_text=None, target_format='PNG'):
+        """
+        Enhanced processing function for lease population with advanced image support
+        """
+        try:
+            # Parse mapping
+            mapping = self._parse_mapping(mapping_json)
+            
+            # Process multiple image files
+            mapping = self._process_multiple_images(mapping, image_files, watermark_text, target_format)
+            
+            # Load and process document
+            doc = Document(docx_file)
+            self._ensure_document_compatibility(doc)
+            
+            # Process image placeholders with enhanced handler
+            mapping = self._process_image_placeholders_enhanced(doc, mapping)
+            
+            # Process text placeholders
+            if track_changes:
+                doc = self._replace_placeholders_with_track_changes(doc, mapping)
+            else:
+                doc = self._replace_placeholders_in_docx(doc, mapping)
+            
+            # Generate and return processed document
+            return self._generate_final_document(doc, document_name)
+            
+        except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
+            print(f"ERROR in lease_population_replace_enhanced: {str(e)}")
+            print(f"TRACEBACK: {error_traceback}")
+            return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
+    
     def _parse_mapping(self, mapping_json):
         """Parse and validate mapping JSON"""
         if not mapping_json or mapping_json.strip() in ['undefined', 'null']:
@@ -87,37 +123,95 @@ class LeasePopulationProcessor:
         
         return mapping
     
+    def _process_multiple_images(self, mapping, image_files, watermark_text=None, target_format='PNG'):
+        """Process multiple image files with enhanced features"""
+        if not image_files:
+            return mapping
+        
+        try:
+            for key, image_file in image_files.items():
+                try:
+                    image_data = image_file.read()
+                    image_b64 = base64.b64encode(image_data).decode('utf-8')
+                    
+                    # Determine placeholder based on file key
+                    if key == 'exhibit_image':
+                        placeholder = '[EXHIBIT_A_IMAGE_1]'
+                    elif key.startswith('image_'):
+                        placeholder = key.replace('image_', '[').upper() + ']'
+                    else:
+                        placeholder = f'[{key.upper()}]'
+                    
+                    # Store image data with metadata
+                    mapping[placeholder] = {
+                        'image_data': image_b64,
+                        'watermark': watermark_text,
+                        'format': target_format,
+                        'original_filename': image_file.filename,
+                        'size': len(image_data)
+                    }
+                    
+                    print(f"Processed image {key}: {image_file.filename} -> {placeholder}")
+                    
+                except Exception as e:
+                    print(f"Failed to process image {key}: {str(e)}")
+                    continue
+            
+            return mapping
+            
+        except Exception as e:
+            print(f"Error processing multiple images: {str(e)}")
+            return mapping
+    
+    def _process_image_placeholders_enhanced(self, doc, mapping):
+        """Process image placeholders with enhanced image handler"""
+        image_placeholders = []
+        
+        for key, value in mapping.items():
+            # Check if this is an image placeholder with enhanced data
+            if isinstance(value, dict) and 'image_data' in value:
+                image_placeholders.append((key, value))
+                print(f"Found enhanced image placeholder: {key}")
+            elif isinstance(value, str) and value.strip() and key.strip().lower() == '[image]':
+                # Legacy image handling
+                image_placeholders.append((key, {'image_data': value}))
+                print(f"Found legacy image placeholder: {key}")
+        
+        # Handle image embedding for each image placeholder
+        for placeholder_key, image_config in image_placeholders:
+            try:
+                print(f"Attempting to embed image for placeholder: {placeholder_key}")
+                
+                # Use enhanced image handler
+                result = self.image_handler.embed_image_enhanced(
+                    doc=doc,
+                    image_data=image_config['image_data'],
+                    placeholder=placeholder_key,
+                    watermark_text=image_config.get('watermark'),
+                    target_format=image_config.get('format', 'PNG')
+                )
+                
+                if result['success']:
+                    print(f"Image embedding successful for {placeholder_key}")
+                    print(f"Metadata: {result.get('metadata', {})}")
+                    # Clear value to prevent text replacement
+                    mapping[placeholder_key] = ''
+                else:
+                    print(f"Image embedding failed for {placeholder_key}: {result.get('error')}")
+                    
+            except Exception as e:
+                print(f"Image embedding error for {placeholder_key}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+        
+        return mapping
+    
     def _ensure_document_compatibility(self, doc):
         """Ensure document compatibility with modern Word"""
         if hasattr(doc.core_properties, 'version'):
             doc.core_properties.version = '16.0'
         if hasattr(doc.core_properties, 'last_modified_by'):
             doc.core_properties.last_modified_by = 'Document Processor'
-    
-    def _process_image_placeholders(self, doc, mapping):
-        """Process image placeholders before text replacement"""
-        image_placeholders = []
-        for key, value in mapping.items():
-            if key.strip().lower() == '[image]' and value.strip():
-                image_placeholders.append((key, value))
-                print(f"[DEBUG] Found image placeholder: {key}")
-        
-        # Handle image embedding for each image placeholder
-        for placeholder_key, image_data in image_placeholders:
-            try:
-                print(f"[DEBUG] Attempting to embed image for placeholder: {placeholder_key}")
-                success = embedImage(doc, image_data, placeholder_key)
-                if success:
-                    print(f"[DEBUG] Image embedding successful for {placeholder_key}")
-                    mapping[placeholder_key] = ''  # Clear value to prevent text replacement
-                else:
-                    print(f"[WARNING] Image embedding failed for {placeholder_key}")
-            except Exception as e:
-                print(f"[ERROR] Image embedding error for {placeholder_key}: {str(e)}")
-                import traceback
-                traceback.print_exc()
-        
-        return mapping
     
     def _replace_placeholders_in_docx(self, doc, mapping):
         """Replace placeholders in DOCX document"""

@@ -23,11 +23,11 @@ import re
 import csv
 from docx.shared import RGBColor
 from flask import request, jsonify
-from block_replacer import get_all_block_previews
-from block_replacer import replace_signature_and_notary_blocks
+from lease_population.block_replacer import get_all_block_previews
+from lease_population.block_replacer import replace_signature_and_notary_blocks
 from docx import Document
-from block_replacer import generate_signature_block, generate_notary_block
-from block_replacer import getSigBlock, getNotaryBlock, generate_enhanced_combined_block
+from lease_population.block_replacer import generate_signature_block, generate_notary_block
+from lease_population.block_replacer import getSigBlock, getNotaryBlock, generate_enhanced_combined_block
 
 # --- Footnote Editor Integration ---
 from footnote_editor import footnote_editor
@@ -1590,7 +1590,7 @@ def generate_signature_block():
             return jsonify({'success': False, 'error': 'Number of signatures must be at least 1'}), 400
         
         # Import generator function
-        from block_replacer import generator
+        from lease_population.block_replacer import generator
         
         # Call generator function
         result = generator(owner_type, is_notary, '', num_signatures)
@@ -1646,7 +1646,7 @@ def gen_exhibit_a():
         
         # Generate exhibit string using the build_exhibit_string function
         try:
-            from block_replacer import build_exhibit_string
+            from lease_population.block_replacer import build_exhibit_string
             exhibit_string = build_exhibit_string(parcels)
             print(f"[DEBUG] Generated exhibit string, length: {len(exhibit_string)}")
             return jsonify({
@@ -1686,7 +1686,7 @@ def test_image_embedding():
         sample_image_data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
         
         # Test the embedImage function
-        from block_replacer import embedImage
+        from lease_population.block_replacer import embedImage
         success = embedImage(doc, sample_image_data, '[EXHIBIT_A_IMAGE_1]')
         
         if success:
@@ -1741,7 +1741,7 @@ def test_image_embedding_comprehensive():
             print(f"[TEST] ✓ Base64 conversion successful: {len(img_b64)} chars")
             
             # Test image embedding function
-            from block_replacer import embedImage
+            from lease_population.block_replacer import embedImage
             from docx import Document
             from io import BytesIO
             
@@ -1784,7 +1784,7 @@ def test_image_embedding_comprehensive():
             
             # Create test document WITHOUT placeholder
             from docx import Document
-            from block_replacer import embedImage
+            from lease_population.block_replacer import embedImage
             
             doc = Document()
             doc.add_paragraph("Test document WITHOUT placeholder")
