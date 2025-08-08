@@ -1,5 +1,10 @@
 """
 Core lease population processing functionality
+
+
+Notes 
+Having some issues with the image embedding. 
+Need to break down the image embedding process into smaller steps. 
 """
 
 import json
@@ -45,6 +50,8 @@ class LeasePopulationProcessor:
             
             # Process text placeholders
             if track_changes:
+                # Add "NEW:" prefix to all values for track changes
+                mapping = {k: f"NEW:{v}" for k, v in mapping.items()}
                 doc = self._replace_placeholders_with_track_changes(doc, mapping)
             else:
                 doc = self._replace_placeholders_in_docx(doc, mapping)
@@ -81,6 +88,8 @@ class LeasePopulationProcessor:
             
             # Process text placeholders
             if track_changes:
+                # Add "NEW:" prefix to all values for track changes
+                mapping = {k: f"NEW:{v}" for k, v in mapping.items()}
                 doc = self._replace_placeholders_with_track_changes(doc, mapping)
             else:
                 doc = self._replace_placeholders_in_docx(doc, mapping)
