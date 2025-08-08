@@ -2330,6 +2330,28 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 };
             }
 
+            // Helpers for robust JSON parsing
+            function sanitizeJsonText(text) {
+                try {
+                    // Remove BOM
+                    text = text.replace(/^\uFEFF/, '');
+                    // Strip // line comments
+                    text = text.replace(/^\s*\/\/.*$/gm, '');
+                    // Strip /* block */ comments
+                    text = text.replace(/\/\*[\s\S]*?\*\//g, '');
+                    // Remove trailing commas before } or ]
+                    text = text.replace(/,(\s*[}\]])/g, '$1');
+                    return text;
+                } catch (_) {
+                    return text;
+                }
+            }
+            function computeLineCol(str, index) {
+                const upto = str.slice(0, index);
+                const lines = upto.split(/\r?\n/);
+                return { line: lines.length, column: (lines[lines.length - 1] || '').length + 1 };
+            }
+
             // Table upload/parse logic
             const tableUploadForm = document.getElementById('tableUploadForm');
             const tableFileInput = document.getElementById('tableFileInput');
@@ -2413,8 +2435,19 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     }
                     try {
                         const file = jsonFileInput.files[0];
-                        const text = await file.text();
-                        const data = JSON.parse(text);
+                        let text = await file.text();
+                        const rawText = text;
+                        text = sanitizeJsonText(text);
+                        let data;
+                        try {
+                            data = JSON.parse(text);
+                        } catch (parseErr) {
+                            // Try to compute position from original text
+                            const msg = String(parseErr && parseErr.message ? parseErr.message : 'Invalid JSON');
+                            jsonParseMsg.textContent = 'Error: ' + msg;
+                            jsonParseMsg.style.display = 'block';
+                            return;
+                        }
                         // Accept either array of {key,value} or object map
                         if (Array.isArray(data)) {
                             parsedJsonMapping = data.filter(p => p && typeof p.key === 'string').map(p => ({ key: p.key, value: String(p.value ?? '') }));
@@ -2432,7 +2465,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                         });
                         jsonPreviewSection.style.display = 'block';
                     } catch (err) {
-                        jsonParseMsg.textContent = 'Error: ' + err.message;
+                        jsonParseMsg.textContent = 'Error: ' + (err && err.message ? err.message : String(err));
                         jsonParseMsg.style.display = 'block';
                     }
                 };
