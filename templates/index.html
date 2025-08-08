@@ -1288,7 +1288,10 @@
                             <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
                             <tbody></tbody>
                         </table>
-                        <button type="button" class="submit-btn" id="usePastedTableBtn" style="margin-top:1rem;">Use This Table</button>
+                        <div style="margin-top:1rem; display:flex; gap:1rem;">
+                            <button type="button" class="submit-btn" id="usePastedTableBtn">Use This Table</button>
+                            <button type="button" class="secondary-btn" id="exportPastedJsonBtn">Export as JSON</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Owner/Signature Modal -->
@@ -2998,6 +3001,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             const pastePreviewTable = document.getElementById('pastePreviewTable').querySelector('tbody');
             const pasteDocNamePreview = document.getElementById('pasteDocNamePreview');
             const usePastedTableBtn = document.getElementById('usePastedTableBtn');
+            const exportPastedJsonBtn = document.getElementById('exportPastedJsonBtn');
             let pastedTableMapping = [];
             let pastedDocumentName = '';
             if (pasteTableForm) {
@@ -3063,6 +3067,25 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     // Show replacement mode section
                     document.getElementById('replacementModeSection').style.display = 'block';
                 };
+                if (exportPastedJsonBtn) {
+                    exportPastedJsonBtn.onclick = function() {
+                        if (!pastedTableMapping || pastedTableMapping.length === 0) {
+                            pasteParseMsg.textContent = 'Nothing to export: parse a table first.';
+                            pasteParseMsg.style.display = 'block';
+                            return;
+                        }
+                        const blob = new Blob([JSON.stringify(pastedTableMapping, null, 2)], {type: 'application/json'});
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        const safeName = (pastedDocumentName || 'lease_population_filled').replace(/[^a-zA-Z0-9._-]/g, '_');
+                        a.href = url;
+                        a.download = `${safeName}_mapping.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    };
+                }
             }
         }
         // Activate Lease Population tab logic on DOMContentLoaded
