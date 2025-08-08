@@ -48,6 +48,9 @@ class LeasePopulationProcessor:
             # Process image placeholders
             mapping = self._process_image_placeholders(doc, mapping)
             
+            # Auto-generate signature/notary blocks into mapping
+            mapping = self._auto_generate_signature_blocks(mapping)
+
             # Process text placeholders
             if track_changes:
                 # Add "NEW:" prefix to all values for track changes
@@ -86,6 +89,9 @@ class LeasePopulationProcessor:
             # Process image placeholders with enhanced handler
             mapping = self._process_image_placeholders_enhanced(doc, mapping)
             
+            # Auto-generate signature/notary blocks into mapping
+            mapping = self._auto_generate_signature_blocks(mapping)
+
             # Process text placeholders
             if track_changes:
                 # Add "NEW:" prefix to all values for track changes
@@ -103,6 +109,58 @@ class LeasePopulationProcessor:
             print(f"ERROR in lease_population_replace_enhanced: {str(e)}")
             print(f"TRACEBACK: {error_traceback}")
             return jsonify({'error': f'Failed to process DOCX: {str(e)}', 'traceback': error_traceback}), 500
+
+    def _auto_generate_signature_blocks(self, mapping: dict) -> dict:
+        """Generate [Signature Block] and [Signature Block With Notrary] based on mapping values.
+        Retains existing values if already provided.
+        """
+        try:
+            # If both already exist, do nothing
+            if mapping.get('[Signature Block]') and mapping.get('[Signature Block With Notrary]'):
+                return mapping
+
+            # Party type detection (grantor/grantee/owner)
+            party_type = (
+                mapping.get('[Grantor Type]') or
+                mapping.get('[Grantee Type]') or
+                mapping.get('[Owner Type]') or
+                ''
+            ).strip().lower()
+            is_individual = 'individual' in party_type
+
+            # Common fields
+            grantor_name = mapping.get('[Grantor Name]', '')
+            trust_entity_name = mapping.get('[Trust/Entity Name]', '')
+            name = mapping.get('[Name]', '')
+            title = mapping.get('[Title]', '')
+            state = mapping.get('[State]', '')
+            county = mapping.get('[County]', '')
+            name_of_individuals = mapping.get('[NAME(S) OF INDIVIDUAL(S)]', '')
+            type_of_authority = mapping.get('[TYPE OF AUTHORITY]', '')
+            instrument_for = mapping.get('[NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR]', '')
+
+            # Build blocks
+            if is_individual:
+                sig_block = generate_signature_block(grantor_name, block_type='individual')
+                notary_block = generate_notary_block(state, county, name_of_individuals, block_type='individual')
+            else:
+                sig_block = generate_signature_block(grantor_name, trust_entity_name, name, title, block_type='entity')
+                notary_block = generate_notary_block(state, county, name_of_individuals, type_of_authority, instrument_for, block_type='entity')
+
+            # Respect existing values if present
+            mapping.setdefault('[Signature Block]', sig_block)
+
+            # Combined variant
+            combined = sig_block
+            if '[Notary Block]' in combined:
+                combined = combined.replace('[Notary Block]', notary_block)
+            else:
+                combined = f"{sig_block}\n\n{notary_block}".strip()
+            mapping.setdefault('[Signature Block With Notrary]', combined)
+
+            return mapping
+        except Exception:
+            return mapping
     
     def _parse_mapping(self, mapping_json):
         """Parse and validate mapping JSON"""
