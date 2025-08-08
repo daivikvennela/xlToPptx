@@ -686,21 +686,9 @@ def parse_kv_table_file(file_storage):
 @app.route('/parse_kv_table', methods=['POST'])
 def parse_kv_table():
     """
-    Accept a 2-column CSV or Excel file and return a key-value mapping as JSON.
-    The first row is treated as the document name.
+    Disabled in Lean MVP mode. Use JSON upload instead.
     """
-    if 'table_file' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
-    file = request.files['table_file']
-    try:
-        mapping, document_name = parse_kv_table_file(file)
-        # Validate
-        keys = [pair['key'] for pair in mapping]
-        if any(not k for k in keys) or len(set(keys)) != len(keys):
-            return jsonify({'error': 'Keys must be non-empty and unique'}), 400
-        return jsonify({'mapping': mapping, 'document_name': document_name})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+    return jsonify({'error': 'parse_kv_table is disabled in Lean MVP mode. Use JSON upload instead.'}), 400
 
 # --- Track Changes Replacement Logic ---
 def add_comment_to_run(run, comment_text):

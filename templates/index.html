@@ -1201,9 +1201,9 @@
                 </div>
                 <div style="margin-bottom:2rem;">
                     <label style="font-weight:600; color:#00bfff;">Input Method:</label>
-                    <button type="button" class="secondary-btn" id="manualInputBtn">Manual Entry</button>
-                    <button type="button" class="secondary-btn" id="uploadTableBtn">Upload Table (CSV/Excel)</button>
-                    <button type="button" class="secondary-btn" id="pasteTableBtn">Paste Table</button>
+                    <button type="button" class="secondary-btn" id="manualInputBtn" disabled style="display:none;">Manual Entry</button>
+                    <button type="button" class="secondary-btn" id="uploadTableBtn" disabled style="display:none;">Upload Table (CSV/Excel)</button>
+                    <button type="button" class="secondary-btn" id="pasteTableBtn" disabled style="display:none;">Paste Table</button>
                     <button type="button" class="secondary-btn" id="uploadJsonBtn">Upload JSON</button>
                 </div>
                 <div id="inputMethodManual" style="display:none;">
@@ -2310,27 +2310,16 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             const pasteTableBtn = document.getElementById('pasteTableBtn');
             const inputMethodPaste = document.getElementById('inputMethodPaste');
             const inputMethodJson = document.getElementById('inputMethodJson');
-            manualInputBtn.onclick = function() {
-                inputMethodManual.style.display = 'block';
-                inputMethodUpload.style.display = 'none';
-                inputMethodPaste.style.display = 'none';
-                inputMethodJson.style.display = 'none';
-                document.getElementById('welcomeMessage').style.display = 'none';
-            };
-            uploadTableBtn.onclick = function() {
-                inputMethodManual.style.display = 'none';
-                inputMethodUpload.style.display = 'block';
-                inputMethodPaste.style.display = 'none';
-                inputMethodJson.style.display = 'none';
-                document.getElementById('welcomeMessage').style.display = 'none';
-            };
-            pasteTableBtn.onclick = function() {
-                inputMethodManual.style.display = 'none';
-                inputMethodUpload.style.display = 'none';
-                inputMethodPaste.style.display = 'block';
-                inputMethodJson.style.display = 'none';
-                document.getElementById('welcomeMessage').style.display = 'none';
-            };
+            // Disable legacy handlers
+            if (manualInputBtn) manualInputBtn.disabled = true;
+            if (uploadTableBtn) uploadTableBtn.disabled = true;
+            if (pasteTableBtn) pasteTableBtn.disabled = true;
+            // Force JSON method visible by default
+            inputMethodManual.style.display = 'none';
+            inputMethodUpload.style.display = 'none';
+            inputMethodPaste.style.display = 'none';
+            inputMethodJson.style.display = 'block';
+            document.getElementById('welcomeMessage').style.display = 'none';
             if (uploadJsonBtn) {
                 uploadJsonBtn.onclick = function() {
                     inputMethodManual.style.display = 'none';
