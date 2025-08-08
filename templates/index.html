@@ -1204,6 +1204,7 @@
                     <button type="button" class="secondary-btn" id="manualInputBtn">Manual Entry</button>
                     <button type="button" class="secondary-btn" id="uploadTableBtn">Upload Table (CSV/Excel)</button>
                     <button type="button" class="secondary-btn" id="pasteTableBtn">Paste Table</button>
+                    <button type="button" class="secondary-btn" id="uploadJsonBtn">Upload JSON</button>
                 </div>
                 <div id="inputMethodManual" style="display:none;">
                     <form id="kvForm" class="upload-form" autocomplete="off">
@@ -1221,7 +1222,8 @@
                         <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
                         <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
                         <div style="margin-top:1rem; display:flex; gap:1rem;">
-                            <button type="button" class="secondary-btn" id="exportJsonBtn" disabled>Export Mapping as JSON</button>
+                            <button type="button" class="secondary-btn" id="lpExportJsonBtn">Export Mapping as JSON</button>
+                            <button type="button" class="secondary-btn" id="openJsonConverterBtn">Convert to JSON (Preview)</button>
                             <button type="button" class="secondary-btn" id="openSigNotBuilderBtn" disabled>Open Sig Block Builder</button>
                         </div>
                     </form>
@@ -1239,6 +1241,23 @@
                             <tbody></tbody>
                         </table>
                         <button type="button" class="submit-btn" id="useParsedTableBtn" style="margin-top:1rem;">Use This Table</button>
+                    </div>
+                </div>
+
+                <!-- JSON Upload Method -->
+                <div id="inputMethodJson" style="display:none;">
+                    <form id="jsonUploadForm" class="upload-form" autocomplete="off" enctype="multipart/form-data">
+                        <input type="file" id="jsonFileInput" accept="application/json,.json" style="margin-bottom:1rem;">
+                        <button type="submit" class="submit-btn">Parse JSON</button>
+                    </form>
+                    <div id="jsonParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
+                    <div id="jsonPreviewSection" style="display:none; margin-top:1rem;">
+                        <h3 style="color:#00bfff;">Parsed JSON Mapping</h3>
+                        <table class="preview-table" id="jsonPreviewTable">
+                            <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" class="submit-btn" id="useParsedJsonBtn" style="margin-top:1rem;">Use This JSON</button>
                     </div>
                 </div>
                 <div id="inputMethodPaste" style="display:none;">
@@ -2282,28 +2301,42 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             // Dual input method logic
             const manualInputBtn = document.getElementById('manualInputBtn');
             const uploadTableBtn = document.getElementById('uploadTableBtn');
+            const uploadJsonBtn = document.getElementById('uploadJsonBtn');
             const inputMethodManual = document.getElementById('inputMethodManual');
             const inputMethodUpload = document.getElementById('inputMethodUpload');
             const pasteTableBtn = document.getElementById('pasteTableBtn');
             const inputMethodPaste = document.getElementById('inputMethodPaste');
+            const inputMethodJson = document.getElementById('inputMethodJson');
             manualInputBtn.onclick = function() {
                 inputMethodManual.style.display = 'block';
                 inputMethodUpload.style.display = 'none';
                 inputMethodPaste.style.display = 'none';
+                inputMethodJson.style.display = 'none';
                 document.getElementById('welcomeMessage').style.display = 'none';
             };
             uploadTableBtn.onclick = function() {
                 inputMethodManual.style.display = 'none';
                 inputMethodUpload.style.display = 'block';
                 inputMethodPaste.style.display = 'none';
+                inputMethodJson.style.display = 'none';
                 document.getElementById('welcomeMessage').style.display = 'none';
             };
             pasteTableBtn.onclick = function() {
                 inputMethodManual.style.display = 'none';
                 inputMethodUpload.style.display = 'none';
                 inputMethodPaste.style.display = 'block';
+                inputMethodJson.style.display = 'none';
                 document.getElementById('welcomeMessage').style.display = 'none';
             };
+            if (uploadJsonBtn) {
+                uploadJsonBtn.onclick = function() {
+                    inputMethodManual.style.display = 'none';
+                    inputMethodUpload.style.display = 'none';
+                    inputMethodPaste.style.display = 'none';
+                    inputMethodJson.style.display = 'block';
+                    document.getElementById('welcomeMessage').style.display = 'none';
+                };
+            }
 
             // Table upload/parse logic
             const tableUploadForm = document.getElementById('tableUploadForm');
@@ -2369,6 +2402,61 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 };
             }
 
+            // JSON upload/parse logic
+            const jsonUploadForm = document.getElementById('jsonUploadForm');
+            const jsonFileInput = document.getElementById('jsonFileInput');
+            const jsonParseMsg = document.getElementById('jsonParseMsg');
+            const jsonPreviewSection = document.getElementById('jsonPreviewSection');
+            const jsonPreviewTable = document.getElementById('jsonPreviewTable') ? document.getElementById('jsonPreviewTable').querySelector('tbody') : null;
+            const useParsedJsonBtn = document.getElementById('useParsedJsonBtn');
+            let parsedJsonMapping = [];
+            if (jsonUploadForm) {
+                jsonUploadForm.onsubmit = async function(e) {
+                    e.preventDefault();
+                    jsonParseMsg.style.display = 'none';
+                    if (!jsonFileInput.files || !jsonFileInput.files[0]) {
+                        jsonParseMsg.textContent = 'Please select a JSON file.';
+                        jsonParseMsg.style.display = 'block';
+                        return;
+                    }
+                    try {
+                        const file = jsonFileInput.files[0];
+                        const text = await file.text();
+                        const data = JSON.parse(text);
+                        // Accept either array of {key,value} or object map
+                        if (Array.isArray(data)) {
+                            parsedJsonMapping = data.filter(p => p && typeof p.key === 'string').map(p => ({ key: p.key, value: String(p.value ?? '') }));
+                        } else if (data && typeof data === 'object') {
+                            parsedJsonMapping = Object.entries(data).map(([k, v]) => ({ key: String(k), value: String(v ?? '') }));
+                        } else {
+                            throw new Error('Unsupported JSON structure. Provide an array of {key, value} or an object map.');
+                        }
+                        if (!jsonPreviewTable) return;
+                        jsonPreviewTable.innerHTML = '';
+                        parsedJsonMapping.forEach(pair => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `<td>${pair.key}</td><td>${pair.value}</td>`;
+                            jsonPreviewTable.appendChild(row);
+                        });
+                        jsonPreviewSection.style.display = 'block';
+                    } catch (err) {
+                        jsonParseMsg.textContent = 'Error: ' + err.message;
+                        jsonParseMsg.style.display = 'block';
+                    }
+                };
+                if (useParsedJsonBtn) {
+                    useParsedJsonBtn.onclick = function() {
+                        // Switch to manual input and populate fields
+                        inputMethodManual.style.display = 'block';
+                        inputMethodUpload.style.display = 'none';
+                        inputMethodPaste.style.display = 'none';
+                        inputMethodJson.style.display = 'none';
+                        kvPairsContainer.innerHTML = '';
+                        parsedJsonMapping.forEach(pair => addPair(pair.key, pair.value));
+                    };
+                }
+            }
+
             // Track Changes toggle logic
             let trackChanges = false;
             const trackChangesBtn = document.getElementById('trackChangesBtn');
@@ -2386,7 +2474,8 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             const kvValidationMsg = document.getElementById('kvValidationMsg');
             const kvSummarySection = document.getElementById('kvSummarySection');
             const kvSummaryTable = document.getElementById('kvSummaryTable').querySelector('tbody');
-            const exportJsonBtn = document.getElementById('exportJsonBtn');
+            const exportJsonBtn = document.getElementById('lpExportJsonBtn');
+            const openJsonConverterBtn = document.getElementById('openJsonConverterBtn');
             let pairCount = 0;
 
             function addPair(key = '', value = '') {
@@ -2439,6 +2528,59 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 addImageUploadBtn.onclick = function() { addImageUploadPair(); };
             }
 
+
+            // Export current KV as JSON
+            if (exportJsonBtn) {
+                exportJsonBtn.onclick = function() {
+                    const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+                    const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+                    const mapping = keys.map((k, i) => ({ key: k, value: values[i] }));
+                    const blob = new Blob([JSON.stringify(mapping, null, 2)], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'lease_population_mapping.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+            }
+
+            // Simple converter modal to show JSON preview from current inputs
+            if (openJsonConverterBtn) {
+                openJsonConverterBtn.onclick = function() {
+                    const keys = Array.from(kvPairsContainer.querySelectorAll('.kv-key')).map(i => i.value.trim());
+                    const values = Array.from(kvPairsContainer.querySelectorAll('.kv-value')).map(i => i.value);
+                    const mapping = keys.map((k, i) => ({ key: k, value: values[i] }));
+                    const jsonStr = JSON.stringify(mapping, null, 2);
+                    const modal = document.createElement('div');
+                    modal.style = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; display:flex; align-items:center; justify-content:center;';
+                    modal.innerHTML = `
+                        <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:1.5rem; min-width:600px; max-width:90vw; max-height:90vh; overflow:auto; position:relative;">
+                            <button id="closeJsonPreviewModal" style="position:absolute; top:0.75rem; right:0.75rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
+                            <h3 style="color:#00bfff; margin-bottom:1rem;">JSON Preview</h3>
+                            <pre style="white-space:pre-wrap; background:rgba(26,26,46,0.8); padding:1rem; border-radius:8px; border:1px solid #00bfff;">${jsonStr.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+                            <div style="text-align:right; margin-top:1rem;">
+                                <button id="downloadJsonFromPreview" class="submit-btn">Download JSON</button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(modal);
+                    document.getElementById('closeJsonPreviewModal').onclick = function() { modal.remove(); };
+                    document.getElementById('downloadJsonFromPreview').onclick = function() {
+                        const blob = new Blob([jsonStr], {type: 'application/json'});
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'lease_population_mapping.json';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    };
+                };
+            }
 
             // Create Exhibit A modal immediately before button creation
             if (!document.getElementById("exhibitAModal")) {
