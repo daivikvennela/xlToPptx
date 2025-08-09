@@ -3071,54 +3071,6 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             }
         }
 
-            /* Removed: generateBlockPreviewBtn */
-            // Collect relevant fields from mapping
-            const mapping = kvForm.kvMapping || [];
-            function getVal(key) {
-                const found = mapping.find(pair => pair.key.trim().toLowerCase() === key.toLowerCase());
-                return found ? found.value : '';
-            }
-            const grantor_name = getVal('[Grantor Name]');
-            const trust_entity_name = getVal('[Trust/Entity Name]');
-            const name = getVal('[Name]');
-            const title = getVal('[Title]');
-            const state = getVal('[State]');
-            const county = getVal('[County]');
-            const name_of_individuals = getVal('[NAME(S) OF INDIVIDUAL(S)]');
-            const type_of_authority = getVal('[TYPE OF AUTHORITY]');
-            const instrument_for = getVal('[NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR]');
-            // Call backend for preview
-            const response = await fetch('/block_preview', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ grantor_name, trust_entity_name, name, title, state, county, name_of_individuals, type_of_authority, instrument_for })
-            });
-            const data = await response.json();
-            const section = document.getElementById('blockPreviewSection');
-            const content = document.getElementById('blockPreviewContent');
-            if (data && data.preview) {
-                section.style.display = 'block';
-                content.innerHTML = `
-                    <div style='margin-bottom:1.5rem;'><b>Individual Signature Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.individual_signature}</pre></div>
-                    <div style='margin-bottom:1.5rem;'><b>Individual Notary Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.individual_notary}</pre></div>
-                    <div style='margin-bottom:1.5rem;'><b>Entity Signature Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.entity_signature}</pre></div>
-                    <div><b>Entity Notary Block:</b><pre style='background:#181830; color:#b5e0ff; padding:1em; border-radius:8px;'>${data.preview.entity_notary}</pre></div>
-                `;
-            } else {
-                section.style.display = 'block';
-                content.innerHTML = `<span style='color:#ff6b6b;'>Error generating preview.</span>`;
-            }
-        };
-
-            /* Removed: testPartyTypeBtn */
-            docxValidationMsg.style.display = 'none';
-            if (!docxInput.files || !docxInput.files[0]) {
-                docxValidationMsg.textContent = 'Please select a DOCX file.';
-                docxValidationMsg.style.display = 'block';
-                return;
-            }
-            let mapping = kvForm.kvMapping;
-
             // If mapping is not available, try to build it from current form inputs
             if (!mapping || !Array.isArray(mapping) || mapping.length === 0) {
                 console.log('kvForm.kvMapping not available, building from current inputs...');
