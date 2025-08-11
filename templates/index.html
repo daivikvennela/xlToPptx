@@ -1192,19 +1192,70 @@
                 <h1>Lease Population: DOCX Placeholder Replacement</h1>
                 <div id="welcomeMessage" style="margin-bottom:2rem; padding:1.5rem; background:rgba(0,191,255,0.1); border-radius:12px; border-left:4px solid #00bfff;">
                     <h3 style="color:#00bfff; margin-bottom:1rem;">Welcome to Lease Population</h3>
-                    <p style="color:#b5e0ff; margin-bottom:1rem;">Choose your preferred input method to get started:</p>
+                    <p style="color:#b5e0ff; margin-bottom:1rem;">Upload your JSON file to automatically populate lease document placeholders:</p>
                     <ul style="color:#cbd5e0; line-height:1.6;">
-                        <li><strong>Manual Entry:</strong> Add placeholders and values one by one</li>
-                        <li><strong>Upload Table:</strong> Upload a CSV or Excel file with your data</li>
-                        <li><strong>Paste Table:</strong> Paste tab-separated data from Excel or Sheets</li>
+                        <li><strong>JSON Upload:</strong> Upload a JSON file with your key-value mappings (Recommended)</li>
+                        <li><strong>Manual Entry:</strong> Add placeholders and values one by one (Optional)</li>
+                        <li><strong>Alternative Methods:</strong> CSV/Excel or paste table data (Legacy)</li>
                     </ul>
+                    <div style="margin-top:1rem; padding:1rem; background:rgba(0,255,127,0.1); border-radius:8px; border-left:3px solid #00ff7f;">
+                        <p style="color:#00ff7f; margin:0; font-weight:500;">💡 Tip: Use the JSON format for fastest and most accurate processing!</p>
+                    </div>
                 </div>
                 <div style="margin-bottom:2rem;">
                     <label style="font-weight:600; color:#00bfff;">Input Method:</label>
-                    <button type="button" class="secondary-btn" id="manualInputBtn">Manual Entry</button>
-                    <button type="button" class="secondary-btn" id="uploadTableBtn">Upload Table (CSV/Excel)</button>
+                    <button type="button" class="submit-btn" id="jsonInputBtn" style="margin-right:1rem;">📄 Upload JSON File</button>
+                    <button type="button" class="secondary-btn" id="manualInputBtn" style="margin-right:0.5rem;">Manual Entry</button>
+                    <button type="button" class="secondary-btn" id="uploadTableBtn" style="margin-right:0.5rem;">CSV/Excel</button>
                     <button type="button" class="secondary-btn" id="pasteTableBtn">Paste Table</button>
                 </div>
+                
+                <!-- JSON Upload Method (Primary) -->
+                <div id="inputMethodJson" style="display:block;">
+                    <div style="background:rgba(26,26,46,0.8); border-radius:12px; padding:2rem; border:1px solid #00bfff; margin-bottom:2rem;">
+                        <h3 style="color:#00bfff; margin-bottom:1.5rem;">📄 JSON File Upload</h3>
+                        
+                        <!-- File Upload Area -->
+                        <div style="border:2px dashed #00bfff; border-radius:8px; padding:2rem; text-align:center; margin-bottom:1.5rem; background:rgba(0,191,255,0.05);">
+                            <div style="font-size:3rem; margin-bottom:1rem;">📁</div>
+                            <h4 style="color:#00bfff; margin-bottom:0.5rem;">Drop your JSON file here or click to browse</h4>
+                            <p style="color:#b5e0ff; margin-bottom:1rem;">Accepted format: .json files with key-value mappings</p>
+                            <input type="file" id="jsonFileInput" accept=".json" style="display:none;">
+                            <button type="button" class="submit-btn" id="browseJsonBtn" style="margin-top:0.5rem;">Browse Files</button>
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div id="jsonFileInfo" style="display:none; margin-bottom:1rem; padding:1rem; background:rgba(0,191,255,0.1); border-radius:6px;">
+                            <strong style="color:#00bfff;">Selected File:</strong> 
+                            <span id="jsonFileName" style="color:#e2e8f0;"></span>
+                            <span id="jsonFileSize" style="color:#b5e0ff; margin-left:1rem;"></span>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div style="display:flex; gap:1rem; margin-bottom:1rem;">
+                            <button type="button" class="submit-btn" id="parseJsonBtn" disabled>Parse JSON File</button>
+                            <button type="button" class="secondary-btn" id="clearJsonBtn" disabled>Clear</button>
+                        </div>
+                        
+                        <!-- Parse Status -->
+                        <div id="jsonParseStatus" style="display:none; margin-bottom:1rem;"></div>
+                        
+                        <!-- Preview Table -->
+                        <div id="jsonPreviewSection" style="display:none;">
+                            <h4 style="color:#00bfff; margin-bottom:1rem;">Parsed Key-Value Pairs Preview</h4>
+                            <div style="max-height:300px; overflow-y:auto; border:1px solid #00bfff; border-radius:6px;">
+                                <table class="preview-table" id="jsonPreviewTable">
+                                    <thead style="position:sticky; top:0; background:#232347;">
+                                        <tr><th>Key</th><th>Value</th></tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                            <button type="button" class="submit-btn" id="useJsonMappingBtn" style="margin-top:1rem;">✅ Use This Mapping</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="inputMethodManual" style="display:none;">
                     <form id="kvForm" class="upload-form" autocomplete="off">
                         <div id="kvPairsContainer">
@@ -2279,30 +2330,218 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 });
             });
 
-            // Dual input method logic
+            // Multi input method logic
+            const jsonInputBtn = document.getElementById('jsonInputBtn');
             const manualInputBtn = document.getElementById('manualInputBtn');
             const uploadTableBtn = document.getElementById('uploadTableBtn');
+            const pasteTableBtn = document.getElementById('pasteTableBtn');
+            
+            const inputMethodJson = document.getElementById('inputMethodJson');
             const inputMethodManual = document.getElementById('inputMethodManual');
             const inputMethodUpload = document.getElementById('inputMethodUpload');
-            const pasteTableBtn = document.getElementById('pasteTableBtn');
             const inputMethodPaste = document.getElementById('inputMethodPaste');
-            manualInputBtn.onclick = function() {
-                inputMethodManual.style.display = 'block';
+            
+            function hideAllInputMethods() {
+                inputMethodJson.style.display = 'none';
+                inputMethodManual.style.display = 'none';
                 inputMethodUpload.style.display = 'none';
                 inputMethodPaste.style.display = 'none';
                 document.getElementById('welcomeMessage').style.display = 'none';
+            }
+            
+            jsonInputBtn.onclick = function() {
+                hideAllInputMethods();
+                inputMethodJson.style.display = 'block';
+            };
+            manualInputBtn.onclick = function() {
+                hideAllInputMethods();
+                inputMethodManual.style.display = 'block';
             };
             uploadTableBtn.onclick = function() {
-                inputMethodManual.style.display = 'none';
+                hideAllInputMethods();
                 inputMethodUpload.style.display = 'block';
-                inputMethodPaste.style.display = 'none';
-                document.getElementById('welcomeMessage').style.display = 'none';
             };
             pasteTableBtn.onclick = function() {
-                inputMethodManual.style.display = 'none';
-                inputMethodUpload.style.display = 'none';
+                hideAllInputMethods();
                 inputMethodPaste.style.display = 'block';
-                document.getElementById('welcomeMessage').style.display = 'none';
+            };
+
+            // JSON upload/parse logic
+            const jsonFileInput = document.getElementById('jsonFileInput');
+            const browseJsonBtn = document.getElementById('browseJsonBtn');
+            const jsonFileInfo = document.getElementById('jsonFileInfo');
+            const jsonFileName = document.getElementById('jsonFileName');
+            const jsonFileSize = document.getElementById('jsonFileSize');
+            const parseJsonBtn = document.getElementById('parseJsonBtn');
+            const clearJsonBtn = document.getElementById('clearJsonBtn');
+            const jsonParseStatus = document.getElementById('jsonParseStatus');
+            const jsonPreviewSection = document.getElementById('jsonPreviewSection');
+            const jsonPreviewTable = document.getElementById('jsonPreviewTable').querySelector('tbody');
+            const useJsonMappingBtn = document.getElementById('useJsonMappingBtn');
+            
+            let currentJsonData = null;
+            let parsedJsonMapping = [];
+            
+            // Browse button click
+            browseJsonBtn.onclick = function() {
+                jsonFileInput.click();
+            };
+            
+            // File input change
+            jsonFileInput.onchange = function() {
+                const file = this.files[0];
+                if (file) {
+                    jsonFileName.textContent = file.name;
+                    jsonFileSize.textContent = `(${(file.size / 1024).toFixed(1)} KB)`;
+                    jsonFileInfo.style.display = 'block';
+                    parseJsonBtn.disabled = false;
+                    clearJsonBtn.disabled = false;
+                    jsonParseStatus.style.display = 'none';
+                    jsonPreviewSection.style.display = 'none';
+                } else {
+                    clearJsonInput();
+                }
+            };
+            
+            // Clear JSON input
+            function clearJsonInput() {
+                jsonFileInput.value = '';
+                jsonFileInfo.style.display = 'none';
+                parseJsonBtn.disabled = true;
+                clearJsonBtn.disabled = true;
+                jsonParseStatus.style.display = 'none';
+                jsonPreviewSection.style.display = 'none';
+                currentJsonData = null;
+                parsedJsonMapping = [];
+                jsonPreviewTable.innerHTML = '';
+            }
+            
+            clearJsonBtn.onclick = clearJsonInput;
+            
+            // Drag and drop functionality
+            const dropArea = jsonFileInput.parentElement;
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight(e) {
+                dropArea.style.background = 'rgba(0,191,255,0.15)';
+                dropArea.style.borderColor = '#00ff7f';
+            }
+            
+            function unhighlight(e) {
+                dropArea.style.background = 'rgba(0,191,255,0.05)';
+                dropArea.style.borderColor = '#00bfff';
+            }
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files.length > 0 && files[0].type === 'application/json') {
+                    jsonFileInput.files = files;
+                    jsonFileInput.onchange();
+                }
+            }
+            
+            // Parse JSON file
+            parseJsonBtn.onclick = async function() {
+                const file = jsonFileInput.files[0];
+                if (!file) return;
+                
+                try {
+                    jsonParseStatus.style.display = 'block';
+                    jsonParseStatus.innerHTML = '<div style="color:#00bfff;">📄 Parsing JSON file...</div>';
+                    
+                    const text = await file.text();
+                    const jsonData = JSON.parse(text);
+                    
+                    // Convert to key-value pairs
+                    parsedJsonMapping = [];
+                    if (Array.isArray(jsonData)) {
+                        // Handle array format: [{"key": "...", "value": "..."}]
+                        parsedJsonMapping = jsonData.filter(item => item.key && item.value);
+                    } else if (typeof jsonData === 'object') {
+                        // Handle object format: {"key1": "value1", "key2": "value2"}
+                        parsedJsonMapping = Object.entries(jsonData).map(([key, value]) => ({
+                            key: key,
+                            value: String(value)
+                        }));
+                    }
+                    
+                    if (parsedJsonMapping.length === 0) {
+                        throw new Error('No valid key-value pairs found in JSON file');
+                    }
+                    
+                    // Display preview
+                    displayJsonPreview(parsedJsonMapping);
+                    
+                    jsonParseStatus.innerHTML = `<div style="color:#00ff7f;">✅ Successfully parsed ${parsedJsonMapping.length} key-value pairs</div>`;
+                    jsonPreviewSection.style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('JSON parsing error:', error);
+                    jsonParseStatus.innerHTML = `<div style="color:#ff6b6b;">❌ Error parsing JSON: ${error.message}</div>`;
+                    jsonPreviewSection.style.display = 'none';
+                }
+            };
+            
+            // Display JSON preview
+            function displayJsonPreview(mapping) {
+                jsonPreviewTable.innerHTML = '';
+                mapping.forEach(pair => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td style="padding:0.75rem; border-bottom:1px solid #444;">${pair.key}</td>
+                        <td style="padding:0.75rem; border-bottom:1px solid #444; word-break:break-word;">${pair.value}</td>
+                    `;
+                    jsonPreviewTable.appendChild(row);
+                });
+            }
+            
+            // Use JSON mapping
+            useJsonMappingBtn.onclick = function() {
+                if (parsedJsonMapping.length === 0) return;
+                
+                // Switch to manual input method and populate
+                hideAllInputMethods();
+                inputMethodManual.style.display = 'block';
+                
+                // Clear existing pairs
+                const kvPairsContainer = document.getElementById('kvPairsContainer');
+                kvPairsContainer.innerHTML = '';
+                
+                // Add each JSON pair
+                parsedJsonMapping.forEach(pair => {
+                    addPair(pair.key, pair.value);
+                });
+                
+                // Show success message
+                jsonParseStatus.innerHTML = `<div style="color:#00ff7f;">✅ Loaded ${parsedJsonMapping.length} key-value pairs into form</div>`;
+                
+                // Auto-select party type if available
+                setTimeout(() => {
+                    autoSelectPartyTypeFromMapping(parsedJsonMapping);
+                }, 100);
+                
+                // Show replacement mode section
+                document.getElementById('replacementModeSection').style.display = 'block';
             };
 
             // Table upload/parse logic
