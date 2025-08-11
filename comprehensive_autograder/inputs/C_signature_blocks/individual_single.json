@@ -1,0 +1,14 @@
+[
+  {
+    "key": "[Grantor Name]",
+    "value": "John Doe"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "individual"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "1"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "key": "[Grantor Name]",
+    "value": "Smith Family Trust"
+  },
+  {
+    "key": "[Entity Name]",
+    "value": "Smith Family Trust"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "trust"
+  },
+  {
+    "key": "[Trustee Name]",
+    "value": "Jane Smith"
+  },
+  {
+    "key": "[Title]",
+    "value": "Trustee"
+  }
+]

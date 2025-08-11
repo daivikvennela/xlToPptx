@@ -1,0 +1,22 @@
+[
+  {
+    "key": "[APN 1]",
+    "value": "123-456-001"
+  },
+  {
+    "key": "[APN 2]",
+    "value": "123-456-002"
+  },
+  {
+    "key": "[APN 3]",
+    "value": "123-456-003"
+  },
+  {
+    "key": "[Total Acres]",
+    "value": "25.7"
+  },
+  {
+    "key": "# of Parcels",
+    "value": "3"
+  }
+]

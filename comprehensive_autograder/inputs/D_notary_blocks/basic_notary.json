@@ -1,0 +1,18 @@
+[
+  {
+    "key": "[State]",
+    "value": "California"
+  },
+  {
+    "key": "[County]",
+    "value": "Los Angeles"
+  },
+  {
+    "key": "[NAME(S) OF INDIVIDUAL(S)]",
+    "value": "John Doe"
+  },
+  {
+    "key": "[Grantor Type]",
+    "value": "Individual"
+  }
+]

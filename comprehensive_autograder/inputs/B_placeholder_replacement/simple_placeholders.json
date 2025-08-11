@@ -1,0 +1,18 @@
+[
+  {
+    "key": "[Grantor Name]",
+    "value": "Alice Smith"
+  },
+  {
+    "key": "[State]",
+    "value": "Texas"
+  },
+  {
+    "key": "[County]",
+    "value": "Harris"
+  },
+  {
+    "key": "[Document Date]",
+    "value": "December 15, 2023"
+  }
+]

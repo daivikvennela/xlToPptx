@@ -1,0 +1,34 @@
+[
+  {
+    "key": "[Grantor Type]",
+    "value": "Individual"
+  },
+  {
+    "key": "[Grantor Name]",
+    "value": "John Smith"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "individual"
+  },
+  {
+    "key": "[State]",
+    "value": "California"
+  },
+  {
+    "key": "[County]",
+    "value": "Los Angeles"
+  },
+  {
+    "key": "[Total Acres]",
+    "value": "10.5"
+  },
+  {
+    "key": "[APN 1]",
+    "value": "123-456-789"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "1"
+  }
+]

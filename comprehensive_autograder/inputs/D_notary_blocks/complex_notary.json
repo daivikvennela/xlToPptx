@@ -1,0 +1,22 @@
+[
+  {
+    "key": "[State]",
+    "value": "Texas"
+  },
+  {
+    "key": "[County]",
+    "value": "Harris"
+  },
+  {
+    "key": "[NAME(S) OF INDIVIDUAL(S)]",
+    "value": "Jane Smith"
+  },
+  {
+    "key": "[TYPE OF AUTHORITY]",
+    "value": "President"
+  },
+  {
+    "key": "[NAME OF ENTITY OR TRUST WHOM INSTRUMENT WAS EXECUTED FOR]",
+    "value": "ABC Corporation"
+  }
+]

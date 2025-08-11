@@ -1,0 +1,26 @@
+[
+  {
+    "key": "[Grantor Type]",
+    "value": "Entity"
+  },
+  {
+    "key": "[Entity Name]",
+    "value": "ABC Corporation"
+  },
+  {
+    "key": "[State]",
+    "value": "Delaware"
+  },
+  {
+    "key": "[County]",
+    "value": "New Castle"
+  },
+  {
+    "key": "[Authorized Signatory]",
+    "value": "John Smith"
+  },
+  {
+    "key": "[Title]",
+    "value": "President"
+  }
+]

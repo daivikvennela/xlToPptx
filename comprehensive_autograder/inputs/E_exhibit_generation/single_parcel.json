@@ -1,0 +1,22 @@
+[
+  {
+    "key": "[APN 1]",
+    "value": "123-456-789"
+  },
+  {
+    "key": "[APN 1 Acres]",
+    "value": "10.5"
+  },
+  {
+    "key": "[APN 1 Legal Description]",
+    "value": "A parcel of land described as Lot 1, Block 2, Sample Subdivision"
+  },
+  {
+    "key": "[Total Acres]",
+    "value": "10.5"
+  },
+  {
+    "key": "# of Parcels",
+    "value": "1"
+  }
+]

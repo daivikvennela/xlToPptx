@@ -1,0 +1,94 @@
+[
+  {
+    "key": "[Grantor Type]",
+    "value": "Individual"
+  },
+  {
+    "key": "[Grantor Name 1]",
+    "value": "Stephen Douglas Foster"
+  },
+  {
+    "key": "[Grantor Name 2]",
+    "value": "Karen Rene Foster"
+  },
+  {
+    "key": "[Trust/Entity Name]",
+    "value": "NA"
+  },
+  {
+    "key": "[Grantor Name]",
+    "value": "Stephen Douglas Foster and Karen Rene Foster"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "a married couple"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "2"
+  },
+  {
+    "key": "[Grantor Address 1]",
+    "value": "1706 RIVER TRL SUGAR LAND"
+  },
+  {
+    "key": "[Grantor Address 2]",
+    "value": "SUGAR LAND TX 77479"
+  },
+  {
+    "key": "[State]",
+    "value": "Washington"
+  },
+  {
+    "key": "[County]",
+    "value": "Spokane"
+  },
+  {
+    "key": "[Total Acres]",
+    "value": "35.2"
+  },
+  {
+    "key": "[APN List]",
+    "value": "16174.908, 16174.9077, 16174.9078"
+  },
+  {
+    "key": "[APN 1]",
+    "value": "16174.908"
+  },
+  {
+    "key": "[APN 1 Acres]",
+    "value": "15.2"
+  },
+  {
+    "key": "[APN 1 Legal Description]",
+    "value": "17-26-41(SE1/4): THE NORTH 492.68 FT OF THE SOUTH 1645.84 FT OF THE SE1/4; EXCEPT THE WEST 1329.35 FT THEREOF. (PARCEL D ROS AFN 7390810)"
+  },
+  {
+    "key": "[APN 2]",
+    "value": "16174.9077"
+  },
+  {
+    "key": "[APN 2 Acres]",
+    "value": "10"
+  },
+  {
+    "key": "[APN 2 Legal Description]",
+    "value": "17-26-41(SE1/4): THE WEST 887.00 FT OF THE NORTH 492.68 FT OF THE SOUTH 1645.84 FT OF THE SE1/4; EXCEPT COUNTY ROADS. (PARCEL A ROS AFN 7390810)"
+  },
+  {
+    "key": "[APN 3]",
+    "value": "16174.9078"
+  },
+  {
+    "key": "[APN 3 Acres]",
+    "value": "10"
+  },
+  {
+    "key": "[APN 3 Legal Description]",
+    "value": "17-26-41(SE1/4): THE WEST 887.00 FT OF THE SOUTH 1153.16 FT OF THE SE1/4; EXCEPT THE S1/2 OF THE S1/2 OF SAID SE1/4; AND EXCEPT COUNTY ROADS. (PARCEL B ROS AFN 7390810)"
+  },
+  {
+    "key": "# of Parcels",
+    "value": "3"
+  }
+]

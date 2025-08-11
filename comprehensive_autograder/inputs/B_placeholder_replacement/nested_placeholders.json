@@ -1,0 +1,18 @@
+[
+  {
+    "key": "[Grantor Name 1]",
+    "value": "John"
+  },
+  {
+    "key": "[Grantor Name 2]",
+    "value": "Jane"
+  },
+  {
+    "key": "[Grantor Name]",
+    "value": "John and Jane Smith"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "married couple"
+  }
+]

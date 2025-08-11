@@ -1,0 +1,14 @@
+[
+  {
+    "key": "[Grantor Name]",
+    "value": "John Smith"
+  },
+  {
+    "key": "[State]",
+    "value": "California"
+  },
+  {
+    "key": "[County]",
+    "value": "Los Angeles"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "key": "[Grantor Name]",
+    "value": "ABC Corporation"
+  },
+  {
+    "key": "[Entity Name]",
+    "value": "ABC Corporation"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "corporation"
+  },
+  {
+    "key": "[Authorized Signatory]",
+    "value": "John Smith"
+  },
+  {
+    "key": "[Title]",
+    "value": "President"
+  }
+]

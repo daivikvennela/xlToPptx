@@ -1,0 +1,34 @@
+[
+  {
+    "key": "[Grantor Type]",
+    "value": "Individual"
+  },
+  {
+    "key": "[Grantor Name 1]",
+    "value": "Stephen Douglas Foster"
+  },
+  {
+    "key": "[Grantor Name 2]",
+    "value": "Karen Rene Foster"
+  },
+  {
+    "key": "[Grantor Name]",
+    "value": "Stephen Douglas Foster and Karen Rene Foster"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "a married couple"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "2"
+  },
+  {
+    "key": "[State]",
+    "value": "Washington"
+  },
+  {
+    "key": "[County]",
+    "value": "Spokane"
+  }
+]

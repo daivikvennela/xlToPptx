@@ -861,18 +861,19 @@
         <div class="nav-container">
             <a href="#" class="logo">ExcelPPT Pro</a>
             <ul class="nav-links">
-                <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li>
-                <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li>
-                <li><a href="#" class="nav-link" data-tab="lease-population">Lease Population</a></li>
-                <li><a href="#" class="nav-link" data-tab="footnote-editor">Footnote Editor</a></li>
-                <li class="nav-item">
+                <!-- <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li> -->
+                <!-- <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li> -->
+                <li><a href="#" class="nav-link active" data-tab="lease-population">Lease Population</a></li>
+                <!-- <li><a href="#" class="nav-link" data-tab="footnote-editor">Footnote Editor</a></li> -->
+                <!-- <li class="nav-item">
                     <a class="nav-link" href="/template_v2" style="color: white; background: purple;">Template Version 2</a>
-                </li>
+                </li> -->
             </ul>
         </div>
     </nav>
 
     <div class="container">
+        <!-- DEVELOP TAB - COMMENTED OUT
         <div class="tab-content active" id="develop-tab">
             <div class="main-content">
                 <h1>Excel to PowerPoint Converter</h1>
@@ -910,14 +911,9 @@
                     <h2 style="color: #00bfff; margin-bottom: 2rem; text-shadow: 0 0 15px rgba(0, 191, 255, 0.3);">Preview and Customize</h2>
                     <div class="preview-grid" id="previewGrid">
                         <!-- Preview cards will be dynamically added here -->
-                    </div>
-                    <div style="text-align: center; margin-top: 3rem;">
-                        <button type="button" class="submit-btn" id="generatePptx">Generate PowerPoint</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+            
 
+        <!-- TEMPLATES TAB - COMMENTED OUT
         <div class="tab-content" id="templates-tab">
             <div class="main-content">
                 <h1>PowerPoint Template Generator</h1>
@@ -1187,7 +1183,7 @@
                 </div>
             </div>
         </div>
-        <div class="tab-content" id="lease-population-tab">
+        <div class="tab-content active" id="lease-population-tab">
             <div class="main-content">
                 <h1>Lease Population: DOCX Placeholder Replacement</h1>
                 <div id="welcomeMessage" style="margin-bottom:2rem; padding:1.5rem; background:rgba(0,191,255,0.1); border-radius:12px; border-left:4px solid #00bfff;">
@@ -1564,6 +1560,7 @@
             </div>
         </div>
 
+        <!-- FOOTNOTE EDITOR TAB - COMMENTED OUT
         <!-- Footnote Editor Tab -->
         <div class="tab-content" id="footnote-editor-tab">
             <div class="main-content">
@@ -1624,6 +1621,7 @@
             </div>
         </div>
     </div>
+        END FOOTNOTE EDITOR TAB COMMENT -->
 
     <!-- Party Type Checkpoint Modal -->
     <div id="partyTypeModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
@@ -1652,6 +1650,7 @@
             });
         });
 
+        /* DEVELOP TAB JAVASCRIPT - COMMENTED OUT
         // Mini PowerPoint Preview Logic
         let miniSlides = [];
         let miniSlideIndex = 0;
@@ -2315,6 +2314,7 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
             if (pageNum < 1) pageNum = 1;
             document.getElementById('slidePreviewPageNum').textContent = pageNum;
         });
+        END DEVELOP TAB JAVASCRIPT COMMENT */
 
         // Lease Population Tab Logic
         function activateLeasePopulationTab() {
@@ -4447,6 +4447,7 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
           }
         }
 
+        /* FOOTNOTE EDITOR JAVASCRIPT - COMMENTED OUT
         // --- Footnote Editor Tab Content ---
         document.addEventListener('DOMContentLoaded', function() {
             // Footnote Editor functionality
@@ -5246,6 +5247,7 @@ Said parcel is subject to all existing easements, restrictions, and encumbrances
                 }
             }
         });
+        END FOOTNOTE EDITOR JAVASCRIPT COMMENT */
     </script>
 </body>
 </html> 

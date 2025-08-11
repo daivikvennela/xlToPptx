@@ -1,0 +1,14 @@
+[
+  {
+    "key": "[Number of Signatures]",
+    "value": "not_a_number"
+  },
+  {
+    "key": "[Date]",
+    "value": "invalid_date_format"
+  },
+  {
+    "key": "[Boolean Field]",
+    "value": "maybe"
+  }
+]
