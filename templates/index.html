@@ -861,349 +861,33 @@
         <div class="nav-container">
             <a href="#" class="logo">ExcelPPT Pro</a>
             <ul class="nav-links">
-                <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li>
-                <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li>
-                <li><a href="#" class="nav-link" data-tab="lease-population">Lease Population</a></li>
-                <li><a href="#" class="nav-link" data-tab="footnote-editor">Footnote Editor</a></li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/template_v2" style="color: white; background: purple;">Template Version 2</a>
-                </li>
+                <li><a href="#" class="nav-link active" data-tab="lease-population">Lease Population</a></li>
             </ul>
         </div>
     </nav>
 
     <div class="container">
-        <div class="tab-content active" id="develop-tab">
-            <div class="main-content">
-                <h1>Excel to PowerPoint Converter</h1>
-                <form class="upload-form" method="post" enctype="multipart/form-data" id="uploadForm">
-                    <input type="file" name="file" class="file-input" accept=".xlsx" required>
-                    <button type="submit" class="submit-btn">Preview Data</button>
-                </form>
-                <div class="instructions">
-                    <h3>Instructions:</h3>
-                    <ul>
-                        <li>Upload an Excel (.xlsx) file</li>
-                        <li>Preview and customize how your data will appear in the presentation</li>
-                        <li>Choose which data to include and how to organize it</li>
-                        <li>Generate your customized PowerPoint presentation</li>
-                        <li>Maximum file size: 16MB</li>
-                    </ul>
-                </div>
 
-                <div class="mini-preview-section" id="miniPreviewSection" style="display:none;">
-                    <h2>Mini PowerPoint Preview</h2>
-                    <div style="display: flex; justify-content: center; align-items: center;">
-                        <button class="sample-arrow-btn" id="miniPrevBtn">&larr;</button>
-                        <div id="miniSlideContainer" style="flex:1; min-width: 300px; max-width: 700px; margin: 0 20px;"></div>
-                        <button class="sample-arrow-btn" id="miniNextBtn">&rarr;</button>
-                    </div>
-                    <div id="miniSlideIndicator">Slide 1</div>
-                </div>
 
-                <div class="loading" id="loadingIndicator">
-                    <div class="loading-spinner"></div>
-                    <p>Processing your file...</p>
-                </div>
 
-                <div class="preview-section" id="previewSection">
-                    <h2 style="color: #00bfff; margin-bottom: 2rem; text-shadow: 0 0 15px rgba(0, 191, 255, 0.3);">Preview and Customize</h2>
-                    <div class="preview-grid" id="previewGrid">
-                        <!-- Preview cards will be dynamically added here -->
-                    </div>
-                    <div style="text-align: center; margin-top: 3rem;">
-                        <button type="button" class="submit-btn" id="generatePptx">Generate PowerPoint</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="tab-content" id="templates-tab">
-            <div class="main-content">
-                <h1>PowerPoint Template Generator</h1>
-                <div class="template-intro">
-                    <h2>Choose Your Adventure</h2>
-                    <p>Select a module to generate a customized PowerPoint template tailored to your specific needs.</p>
-                </div>
-                
-                <div class="module-grid">
-                    <div class="module-card" data-module="msa-execution">
-                        <div class="module-icon">📋</div>
-                        <h3>MSA Execution</h3>
-                        <p>Master Service Agreement templates and execution workflows</p>
-                    </div>
-                    
-                    <div class="module-card" data-module="bess-ltsa">
-                        <div class="module-icon">🔋</div>
-                        <h3>BESS/LTSA</h3>
-                        <p>Battery Energy Storage System and Long Term Service Agreement</p>
-                    </div>
-                    
-                    <div class="module-card" data-module="lntp-execution">
-                        <div class="module-icon">🚀</div>
-                        <h3>LNTP Execution</h3>
-                        <p>Limited Notice to Proceed execution templates</p>
-                    </div>
-                    
-                    <div class="module-card" data-module="epca-execution">
-                        <div class="module-icon">📊</div>
-                        <h3>EPCA Execution</h3>
-                        <p>Engineering, Procurement, and Construction Agreement templates</p>
-                    </div>
-                    
-                    <div class="module-card" data-module="credit-agreement">
-                        <div class="module-icon">💼</div>
-                        <h3>Credit Agreement Execution</h3>
-                        <p>Financial agreement templates and execution process</p>
-                    </div>
-                    
-                    <div class="module-card" data-module="tax-equity">
-                        <div class="module-icon">🏛️</div>
-                        <h3>Tax Equity</h3>
-                        <p>Tax equity structures and investment frameworks</p>
-                    </div>
-                </div>
-                
-                <div class="selected-module" id="selectedModule" style="display: none;">
-                    <h2>Selected: <span id="selectedModuleName"></span></h2>
-                    <div class="next-steps">
-                        <button class="submit-btn" id="continueBtn">Continue Configuration</button>
-                        <button class="secondary-btn" id="backBtn">Back to Selection</button>
-                    </div>
-                </div>
-
-                <!-- MSA Configuration Panel -->
-                <div class="config-panel" id="msaConfigPanel">
-                    <div class="progress-indicator">
-                        MSA Execution Configuration - Select Your Slides
-                    </div>
-                    
-                    <div class="config-layout">
-                        <div class="config-main">
-                            <!-- Slide selection content -->
-                    
-                    <div class="section-group" data-section="title">
-                        <div class="section-header">
-                            <h4>Section 1: Title (1 slide)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="title-1" checked>
-                                <label for="title-1">Title Slide - MSA Execution Overview</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section-group" data-section="executive-summary">
-                        <div class="section-header">
-                            <h4>Section 2: Executive Summary (1 slide)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="exec-summary-1" checked>
-                                <label for="exec-summary-1">Executive Summary - Key Points and Objectives</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section-group" data-section="module-procurement">
-                        <div class="section-header">
-                            <h4>Section 3: Module Procurement (5 slides)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="module-1" checked>
-                                <label for="module-1">Module Procurement Strategy</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="module-2" checked>
-                                <label for="module-2">Supplier Selection Criteria</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="module-3" checked>
-                                <label for="module-3">Procurement Timeline</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="module-4" checked>
-                                <label for="module-4">Cost Analysis and Budget</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="module-5" checked>
-                                <label for="module-5">Risk Assessment and Mitigation</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section-group" data-section="gen-tie-epc">
-                        <div class="section-header">
-                            <h4>Section 4: Gen-Tie EPC Agreement (4 slides)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="gen-tie-1" checked>
-                                <label for="gen-tie-1">EPC Agreement Overview</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="gen-tie-2" checked>
-                                <label for="gen-tie-2">Technical Specifications</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="gen-tie-3" checked>
-                                <label for="gen-tie-3">Delivery Schedule and Milestones</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="gen-tie-4" checked>
-                                <label for="gen-tie-4">Performance Guarantees</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section-group" data-section="ppa-update">
-                        <div class="section-header">
-                            <h4>Section 5: PPA Update (3 slides)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="ppa-1" checked>
-                                <label for="ppa-1">PPA Status and Updates</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="ppa-2" checked>
-                                <label for="ppa-2">Commercial Terms and Conditions</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="ppa-3" checked>
-                                <label for="ppa-3">Timeline and Next Steps</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section-group" data-section="economics-finance">
-                        <div class="section-header">
-                            <h4>Section 6: Economics and Finance (7 slides)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-1" checked>
-                                <label for="econ-1">Financial Overview and Assumptions</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-2" checked>
-                                <label for="econ-2">Capital Expenditure Analysis</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-3" checked>
-                                <label for="econ-3">Revenue Projections</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-4" checked>
-                                <label for="econ-4">Cash Flow Analysis</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-5" checked>
-                                <label for="econ-5">Return on Investment</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-6" checked>
-                                <label for="econ-6">Sensitivity Analysis</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="econ-7" checked>
-                                <label for="econ-7">Financing Structure</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="section-group" data-section="appendix">
-                        <div class="section-header">
-                            <h4>Section 7: Appendix (5 slides)</h4>
-                            <span class="section-toggle">▼</span>
-                        </div>
-                        <div class="section-content">
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="appendix-1" checked>
-                                <label for="appendix-1">Supporting Documentation</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="appendix-2" checked>
-                                <label for="appendix-2">Technical Drawings and Schematics</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="appendix-3" checked>
-                                <label for="appendix-3">Regulatory Compliance</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="appendix-4" checked>
-                                <label for="appendix-4">Environmental Impact Assessment</label>
-                            </div>
-                            <div class="slide-checkbox">
-                                <input type="checkbox" id="appendix-5" checked>
-                                <label for="appendix-5">Contact Information and References</label>
-                            </div>
-                        </div>
-                    </div>
-
-                            <div class="config-actions">
-                                <button class="submit-btn" id="generateTemplateBtn">Generate Template</button>
-                                <button class="secondary-btn" id="backToModulesBtn">Back to Modules</button>
-                            </div>
-                        </div>
-                        
-                        <div class="config-preview">
-                            <div class="preview-header">
-                                <h3>Slide Preview & Editor</h3>
-                            </div>
-                            <div class="preview-container" id="slidePreviewContainer">
-                                <div class="preview-placeholder">
-                                    <div class="preview-icon">👁️</div>
-                                    <p>Select a slide to see preview</p>
-                                </div>
-                            </div>
-                            
-                            <!-- Content Editor Panel -->
-                            <div class="content-editor" id="contentEditor" style="display: none;">
-                                <div class="editor-header">
-                                    <h4>Edit Content</h4>
-                                    <small>Changes preserve original formatting</small>
-                                </div>
-                                <div class="editor-fields" id="editorFields">
-                                    <!-- Dynamic content fields will be added here -->
-                                </div>
-                                <div class="editor-actions">
-                                    <button class="editor-btn save-btn" id="saveEdits">Save Changes</button>
-                                    <button class="editor-btn reset-btn" id="resetEdits">Reset</button>
-                                    <button class="editor-btn preview-btn" id="previewSlideBtn" type="button">Preview Slide</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="slide-html-preview" id="slideHtmlPreview" style="display:none; margin-top: 1.5rem;"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="tab-content" id="lease-population-tab">
+        <div class="tab-content active" id="lease-population-tab">
             <div class="main-content">
                 <h1>Lease Population: DOCX Placeholder Replacement</h1>
-                <div id="welcomeMessage" style="margin-bottom:2rem; padding:1.5rem; background:rgba(0,191,255,0.1); border-radius:12px; border-left:4px solid #00bfff;">
+                <div id="welcomeMessage" style="margin-bottom:2rem; padding:1.5rem; background:rgba(0,191,255,0.1); border-radius:12px; border-left:4px solid #00bfff; display:none;">
                     <h3 style="color:#00bfff; margin-bottom:1rem;">Welcome to Lease Population</h3>
-                    <p style="color:#b5e0ff; margin-bottom:1rem;">Choose your preferred input method to get started:</p>
+                    <p style="color:#b5e0ff; margin-bottom:1rem;">Streamlined JSON-based document processing:</p>
                     <ul style="color:#cbd5e0; line-height:1.6;">
-                        <li><strong>Manual Entry:</strong> Add placeholders and values one by one</li>
-                        <li><strong>Upload Table:</strong> Upload a CSV or Excel file with your data</li>
-                        <li><strong>Paste Table:</strong> Paste tab-separated data from Excel or Sheets</li>
+                        <li><strong>Upload JSON:</strong> Upload a JSON file with your placeholder mappings</li>
+                        <li><strong>Auto-Generated Blocks:</strong> Signature and notary blocks are automatically created</li>
+                        <li><strong>Export Support:</strong> Download your mappings as JSON for reuse</li>
                     </ul>
                 </div>
                 <div style="margin-bottom:2rem;">
                     <label style="font-weight:600; color:#00bfff;">Input Method:</label>
-                    <button type="button" class="secondary-btn" id="manualInputBtn">Manual Entry</button>
-                    <button type="button" class="secondary-btn" id="uploadTableBtn">Upload Table (CSV/Excel)</button>
-                    <button type="button" class="secondary-btn" id="pasteTableBtn">Paste Table</button>
+                    <button type="button" class="secondary-btn" id="manualInputBtn" disabled style="display:none;">Manual Entry</button>
+                    <button type="button" class="secondary-btn" id="uploadTableBtn" disabled style="display:none;">Upload Table (CSV/Excel)</button>
+                    <button type="button" class="secondary-btn" id="pasteTableBtn" disabled style="display:none;">Paste Table</button>
+                    <button type="button" class="secondary-btn" id="uploadJsonBtn">Upload JSON</button>
                 </div>
                 <div id="inputMethodManual" style="display:none;">
                     <form id="kvForm" class="upload-form" autocomplete="off">
@@ -1220,10 +904,7 @@
                         <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
                         <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
                         <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
-                        <div style="margin-top:1rem; display:flex; gap:1rem;">
-                            <button type="button" class="secondary-btn" id="exportJsonBtn" disabled>Export Mapping as JSON</button>
-                            <button type="button" class="secondary-btn" id="openSigNotBuilderBtn" disabled>Open Sig Block Builder</button>
-                        </div>
+                        <!-- Legacy buttons removed for lean MVP -->
                     </form>
                 </div>
                 <div id="inputMethodUpload" style="display:none;">
@@ -1270,8 +951,84 @@
                             <tbody></tbody>
                         </table>
                         <button type="button" class="submit-btn" id="usePastedTableBtn" style="margin-top:1rem;">Use This Table</button>
+                        <button type="button" class="secondary-btn" id="exportPastedJsonBtn" style="margin-top:1rem; margin-left:1rem;">Export as JSON</button>
                     </div>
                 </div>
+                
+                <!-- JSON Upload Method -->
+                <div id="inputMethodJson" style="display:block;">
+                    <form id="jsonUploadForm" class="upload-form" autocomplete="off" enctype="multipart/form-data">
+                        <div style="margin-bottom:1rem;">
+                            <label for="jsonFileInput" style="color:#00bfff; font-weight:600; display:block; margin-bottom:0.5rem;">Upload JSON File:</label>
+                            <input type="file" id="jsonFileInput" accept=".json" style="margin-bottom:1rem; padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
+                        </div>
+                        <button type="button" class="submit-btn" id="parseJsonBtn" onclick="handleJsonFileUpload()">Parse JSON</button>
+                    </form>
+                    <div id="jsonParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
+                    <div id="jsonPreviewSection" style="display:none; margin-top:1rem;">
+                        <h3 style="color:#00bfff;">JSON Preview</h3>
+                        <table class="preview-table" id="jsonPreviewTable">
+                            <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <button type="button" class="submit-btn" id="useParsedJsonBtn" style="margin-top:1rem;" onclick="useJsonMapping()">Use This JSON</button>
+                    </div>
+                    <div style="margin-top:1rem; display:flex; gap:1rem;">
+                        <button type="button" class="secondary-btn" id="lpExportJsonBtn">Export Mapping as JSON</button>
+                        <button type="button" class="secondary-btn" id="openJsonConverterBtn">Convert to JSON (Preview)</button>
+                        <button type="button" class="secondary-btn" id="generateExhibitABtn">Generate Exhibit A</button>
+                    </div>
+                </div>
+                
+                <!-- JSON Converter Modal -->
+                <div id="jsonConverterModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
+                  <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:600px; max-width:90vw; max-height:80vh; position:relative; box-shadow:0 8px 32px #0008;">
+                    <button id="closeJsonConverterModal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    <h2 style="color:#00bfff; margin-bottom:1rem;">JSON Converter</h2>
+                    <p style="color:#b5e0ff; margin-bottom:1rem;">Current key-value pairs as JSON:</p>
+                    <textarea id="jsonConverterPreview" style="width:100%; min-height:400px; margin-bottom:1rem; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; padding:1rem; font-family:monospace;" readonly></textarea>
+                    <div style="display:flex; gap:1rem;">
+                      <button id="downloadJsonConverterBtn" class="submit-btn">Download JSON</button>
+                      <button id="copyJsonConverterBtn" class="secondary-btn">Copy to Clipboard</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Exhibit A Generation Modal -->
+                <div id="exhibitAModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.7); z-index:10000; align-items:center; justify-content:center;">
+                  <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:800px; max-width:95vw; max-height:90vh; overflow-y:auto; position:relative; box-shadow:0 8px 32px #0008;">
+                    <button id="closeExhibitAModal" style="position:absolute; top:1rem; right:1rem; background:none; border:none; color:#ff6b6b; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    <h2 style="color:#00bfff; margin-bottom:1.5rem;">Generate Exhibit A</h2>
+                    
+                    <div style="margin-bottom:1.5rem;">
+                      <label style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Number of Parcels:</label>
+                      <input type="number" id="numParcelsInput" min="1" max="20" value="1" style="width:100px; padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
+                    </div>
+                    
+                    <div id="parcelListContainer" style="margin-bottom:1.5rem;">
+                      <!-- Dynamic parcel forms will be added here -->
+                    </div>
+                    
+                    <div style="display:flex; gap:1rem; margin-bottom:1.5rem;">
+                      <button id="addParcelBtn" class="secondary-btn">Add Parcel</button>
+                      <button id="generateExhibitStringBtn" class="submit-btn">Generate Exhibit String</button>
+                    </div>
+                    
+                    <div id="exhibitPreviewSection" style="display:none; margin-top:1.5rem;">
+                      <h3 style="color:#00bfff; margin-bottom:1rem;">Generated Exhibit A Preview</h3>
+                      <textarea id="exhibitPreview" style="width:100%; min-height:300px; margin-bottom:1rem; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; padding:1rem; font-family:monospace;" readonly></textarea>
+                      <div style="display:flex; gap:1rem;">
+                        <button id="addExhibitToFormBtn" class="submit-btn">Add to Form</button>
+                        <button id="copyExhibitBtn" class="secondary-btn">Copy to Clipboard</button>
+                      </div>
+                    </div>
+                    
+                    <div style="text-align:center; margin-top:1.5rem;">
+                      <button id="cancelExhibitABtn" class="secondary-btn">Close</button>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Owner/Signature Modal -->
                 <div id="ownerSigModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
                   <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:320px; max-width:90vw; position:relative; box-shadow:0 8px 32px #0008;">
@@ -1513,66 +1270,7 @@
             </div>
         </div>
 
-        <!-- Footnote Editor Tab -->
-        <div class="tab-content" id="footnote-editor-tab">
-            <div class="main-content">
-                <h1>Footnote Editor</h1>
-                <p style="color: #b5e0ff; margin-bottom: 2rem;">Extract, edit, and manage footnotes in DOCX files with advanced search and replace capabilities.</p>
-                
-                <!-- File Upload Section -->
-                <div class="file-upload-section">
-                    <div class="file-drop-zone" id="footnoteFileDrop">
-                        <div class="drop-zone-content">
-                            <div class="drop-zone-icon">📄</div>
-                            <h3>Drop your DOCX file here</h3>
-                            <p>or click to browse</p>
-                            <input type="file" id="footnoteFileInput" accept=".docx" style="display: none;">
-                        </div>
-                    </div>
-                    <div id="fileInfo" style="color: #b5e0ff; margin-top: 1rem; font-weight: 600;"></div>
-                    
-                    <div class="action-buttons">
-                        <button type="button" class="submit-btn" id="extractFootnotesBtn">Extract Footnotes</button>
-                        <button type="button" class="secondary-btn" id="getStatsBtn">Get Statistics</button>
-                    </div>
-                </div>
 
-                <!-- Statistics Section -->
-                <div id="footnoteStatsSection" style="display: none; margin: 2rem 0;">
-                    <h3 style="color: #00bfff; margin-bottom: 1rem;">Document Statistics</h3>
-                    <!-- Statistics will be populated here -->
-                </div>
-
-                <!-- Batch Search and Replace Section -->
-                <div class="batch-replace-section" style="margin: 2rem 0; padding: 1.5rem; background: rgba(26,26,46,0.8); border-radius: 12px; border: 1px solid #00bfff;">
-                    <h3 style="color: #00bfff; margin-bottom: 1rem;">Batch Search & Replace</h3>
-                    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                        <div style="flex: 1;">
-                            <label for="batchSearchInput" style="color: #b5e0ff; font-weight: 600;">Search for:</label>
-                            <input type="text" id="batchSearchInput" placeholder="Enter text to search..." style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0;">
-                        </div>
-                        <div style="flex: 1;">
-                            <label for="batchReplaceInput" style="color: #b5e0ff; font-weight: 600;">Replace with:</label>
-                            <input type="text" id="batchReplaceInput" placeholder="Enter replacement text..." style="width: 100%; padding: 0.75rem; border-radius: 6px; border: 1px solid #00bfff; background: rgba(26,26,46,0.8); color: #e2e8f0;">
-                        </div>
-                    </div>
-                    <button type="button" class="submit-btn" id="batchReplaceBtn">Batch Replace</button>
-                </div>
-
-                <!-- Footnotes List Section -->
-                <div id="footnotesList" style="margin: 2rem 0;">
-                    <!-- Individual footnotes will be populated here -->
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="action-buttons" style="margin: 2rem 0;">
-                    <button type="button" class="submit-btn" id="saveChangesBtn">Save Changes & Download</button>
-                    <button type="button" class="secondary-btn" id="resetChangesBtn">Reset Changes</button>
-                    <button type="button" class="secondary-btn" id="exportJsonBtn">Export as JSON</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Party Type Checkpoint Modal -->
     <div id="partyTypeModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
@@ -2279,31 +1977,38 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 });
             });
 
-            // Dual input method logic
+            // Dual input method logic - Lean MVP: Disable legacy methods
             const manualInputBtn = document.getElementById('manualInputBtn');
             const uploadTableBtn = document.getElementById('uploadTableBtn');
+            const pasteTableBtn = document.getElementById('pasteTableBtn');
+            const uploadJsonBtn = document.getElementById('uploadJsonBtn');
             const inputMethodManual = document.getElementById('inputMethodManual');
             const inputMethodUpload = document.getElementById('inputMethodUpload');
-            const pasteTableBtn = document.getElementById('pasteTableBtn');
             const inputMethodPaste = document.getElementById('inputMethodPaste');
-            manualInputBtn.onclick = function() {
-                inputMethodManual.style.display = 'block';
-                inputMethodUpload.style.display = 'none';
-                inputMethodPaste.style.display = 'none';
-                document.getElementById('welcomeMessage').style.display = 'none';
-            };
-            uploadTableBtn.onclick = function() {
-                inputMethodManual.style.display = 'none';
-                inputMethodUpload.style.display = 'block';
-                inputMethodPaste.style.display = 'none';
-                document.getElementById('welcomeMessage').style.display = 'none';
-            };
-            pasteTableBtn.onclick = function() {
-                inputMethodManual.style.display = 'none';
-                inputMethodUpload.style.display = 'none';
-                inputMethodPaste.style.display = 'block';
-                document.getElementById('welcomeMessage').style.display = 'none';
-            };
+            const inputMethodJson = document.getElementById('inputMethodJson');
+            
+            // Disable legacy handlers
+            if (manualInputBtn) manualInputBtn.disabled = true;
+            if (uploadTableBtn) uploadTableBtn.disabled = true;
+            if (pasteTableBtn) pasteTableBtn.disabled = true;
+            
+            // Force JSON method visible by default, hide others
+            if (inputMethodManual) inputMethodManual.style.display = 'none';
+            if (inputMethodUpload) inputMethodUpload.style.display = 'none';
+            if (inputMethodPaste) inputMethodPaste.style.display = 'none';
+            if (inputMethodJson) inputMethodJson.style.display = 'block';
+            document.getElementById('welcomeMessage').style.display = 'none';
+            
+            // JSON method handler
+            if (uploadJsonBtn) {
+                uploadJsonBtn.onclick = function() {
+                    if (inputMethodManual) inputMethodManual.style.display = 'none';
+                    if (inputMethodUpload) inputMethodUpload.style.display = 'none';
+                    if (inputMethodPaste) inputMethodPaste.style.display = 'none';
+                    if (inputMethodJson) inputMethodJson.style.display = 'block';
+                    document.getElementById('welcomeMessage').style.display = 'none';
+                };
+            }
 
             // Table upload/parse logic
             const tableUploadForm = document.getElementById('tableUploadForm');
@@ -2922,9 +2627,567 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                     document.getElementById('replacementModeSection').style.display = 'block';
                 };
             }
+
+            // JSON Upload logic moved to global scope for better accessibility
+
+            // Export to JSON functionality
+            const lpExportJsonBtn = document.getElementById('lpExportJsonBtn');
+            const exportPastedJsonBtn = document.getElementById('exportPastedJsonBtn');
+            
+            if (lpExportJsonBtn) {
+                lpExportJsonBtn.onclick = function() {
+                    const pairs = Array.from(kvPairsContainer.querySelectorAll('.kv-pair-row')).map(pair => {
+                        const key = pair.querySelector('.kv-key').value.trim();
+                        const value = pair.querySelector('.kv-value').value.trim();
+                        return key ? {key, value} : null;
+                    }).filter(Boolean);
+                    
+                    if (pairs.length === 0) {
+                        alert('No key-value pairs to export.');
+                        return;
+                    }
+                    
+                    downloadJson(pairs, 'lease_mapping.json');
+                };
+            }
+            
+            if (exportPastedJsonBtn) {
+                exportPastedJsonBtn.onclick = function() {
+                    if (pastedTableMapping.length === 0) {
+                        alert('No pasted table data to export.');
+                        return;
+                    }
+                    downloadJson(pastedTableMapping, 'pasted_mapping.json');
+                };
+            }
+            
+            // JSON Converter Modal functionality
+            const openJsonConverterBtn = document.getElementById('openJsonConverterBtn');
+            const jsonConverterModal = document.getElementById('jsonConverterModal');
+            const closeJsonConverterModal = document.getElementById('closeJsonConverterModal');
+            const jsonConverterPreview = document.getElementById('jsonConverterPreview');
+            const downloadJsonConverterBtn = document.getElementById('downloadJsonConverterBtn');
+            const copyJsonConverterBtn = document.getElementById('copyJsonConverterBtn');
+            
+            if (openJsonConverterBtn) {
+                openJsonConverterBtn.onclick = function() {
+                    const pairs = Array.from(kvPairsContainer.querySelectorAll('.kv-pair-row')).map(pair => {
+                        const key = pair.querySelector('.kv-key').value.trim();
+                        const value = pair.querySelector('.kv-value').value.trim();
+                        return key ? {key, value} : null;
+                    }).filter(Boolean);
+                    
+                    if (pairs.length === 0) {
+                        alert('No key-value pairs to convert.');
+                        return;
+                    }
+                    
+                    jsonConverterPreview.value = JSON.stringify(pairs, null, 2);
+                    jsonConverterModal.style.display = 'flex';
+                };
+            }
+            
+            if (closeJsonConverterModal) {
+                closeJsonConverterModal.onclick = function() {
+                    jsonConverterModal.style.display = 'none';
+                };
+            }
+            
+            if (downloadJsonConverterBtn) {
+                downloadJsonConverterBtn.onclick = function() {
+                    try {
+                        const data = JSON.parse(jsonConverterPreview.value);
+                        downloadJson(data, 'converted_mapping.json');
+                    } catch (error) {
+                        alert('Error in JSON data: ' + error.message);
+                    }
+                };
+            }
+            
+            if (copyJsonConverterBtn) {
+                copyJsonConverterBtn.onclick = function() {
+                    jsonConverterPreview.select();
+                    document.execCommand('copy');
+                    copyJsonConverterBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyJsonConverterBtn.textContent = 'Copy to Clipboard';
+                    }, 2000);
+                };
+            }
+
+            function downloadJson(data, filename) {
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
         }
+        // Global JSON upload handler
+        function handleJsonFileUpload() {
+            console.log('handleJsonFileUpload called');
+            
+            const jsonFileInput = document.getElementById('jsonFileInput');
+            const jsonParseMsg = document.getElementById('jsonParseMsg');
+            const jsonPreviewSection = document.getElementById('jsonPreviewSection');
+            const jsonPreviewTable = document.getElementById('jsonPreviewTable');
+            
+            if (jsonParseMsg) jsonParseMsg.style.display = 'none';
+            if (jsonPreviewSection) jsonPreviewSection.style.display = 'none';
+            
+            // Clear table body content
+            const tableBody = jsonPreviewTable ? jsonPreviewTable.querySelector('tbody') : null;
+            if (tableBody) {
+                tableBody.innerHTML = '';
+            }
+
+            if (!jsonFileInput || !jsonFileInput.files || !jsonFileInput.files[0]) {
+                if (jsonParseMsg) {
+                    jsonParseMsg.textContent = 'Please select a JSON file.';
+                    jsonParseMsg.style.display = 'block';
+                }
+                console.log('No file selected');
+                return;
+            }
+
+            const file = jsonFileInput.files[0];
+            console.log('File selected:', file.name, file.type, file.size);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                console.log('File loaded, parsing JSON...');
+                try {
+                    // JSON sanitization function
+                    function sanitizeJsonText(jsonText) {
+                        // Remove BOM if present
+                        if (jsonText.charCodeAt(0) === 0xFEFF) {
+                            jsonText = jsonText.slice(1);
+                        }
+                        // Remove single-line comments
+                        jsonText = jsonText.replace(/\/\/.*$/gm, '');
+                        // Remove multi-line comments
+                        jsonText = jsonText.replace(/\/\*[\s\S]*?\*\//g, '');
+                        // Remove trailing commas before closing brackets/braces
+                        jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1');
+                        return jsonText.trim();
+                    }
+                    
+                    const sanitizedText = sanitizeJsonText(e.target.result);
+                    console.log('Sanitized text:', sanitizedText.substring(0, 200) + '...');
+                    
+                    const jsonData = JSON.parse(sanitizedText);
+                    console.log('Parsed JSON data:', jsonData);
+                    
+                    let parsedJsonMapping = [];
+                    
+                    // Handle different JSON formats
+                    if (Array.isArray(jsonData)) {
+                        // Array format: [{key: "...", value: "..."}, ...]
+                        parsedJsonMapping = jsonData.filter(item => item.key && item.value !== undefined);
+                    } else if (typeof jsonData === 'object' && jsonData !== null) {
+                        // Object format: {"key1": "value1", "key2": "value2"}
+                        parsedJsonMapping = Object.entries(jsonData).map(([key, value]) => ({
+                            key: key,
+                            value: String(value)
+                        }));
+                    }
+
+                    console.log('Parsed mapping:', parsedJsonMapping);
+
+                    if (parsedJsonMapping.length === 0) {
+                        if (jsonParseMsg) {
+                            jsonParseMsg.textContent = 'No valid key-value pairs found in JSON.';
+                            jsonParseMsg.style.display = 'block';
+                        }
+                        return;
+                    }
+
+                    // Display preview
+                    if (tableBody) {
+                        parsedJsonMapping.forEach(item => {
+                            const row = tableBody.insertRow();
+                            row.insertCell(0).textContent = item.key;
+                            row.insertCell(1).textContent = item.value;
+                        });
+                    }
+
+                    if (jsonPreviewSection) {
+                        jsonPreviewSection.style.display = 'block';
+                    }
+                    
+                    // Store the mapping globally for the "Use This JSON" button
+                    window.currentParsedJsonMapping = parsedJsonMapping;
+                    
+                    console.log('JSON parsing completed successfully');
+                } catch (error) {
+                    console.error('JSON parsing error:', error);
+                    if (jsonParseMsg) {
+                        jsonParseMsg.textContent = 'Error parsing JSON: ' + error.message;
+                        jsonParseMsg.style.display = 'block';
+                    }
+                }
+            };
+            
+            reader.onerror = function(error) {
+                console.error('File reading error:', error);
+                if (jsonParseMsg) {
+                    jsonParseMsg.textContent = 'Error reading file.';
+                    jsonParseMsg.style.display = 'block';
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        // Global function to use parsed JSON
+        function useJsonMapping() {
+            console.log('useJsonMapping called');
+            
+            if (!window.currentParsedJsonMapping || window.currentParsedJsonMapping.length === 0) {
+                console.log('No mapping data to use');
+                alert('No JSON data parsed yet. Please parse a JSON file first.');
+                return;
+            }
+            
+            const kvPairsContainer = document.getElementById('kvPairsContainer');
+            const inputMethodJson = document.getElementById('inputMethodJson');
+            const inputMethodManual = document.getElementById('inputMethodManual');
+            
+            // Clear and populate manual form with JSON data
+            if (kvPairsContainer) {
+                kvPairsContainer.innerHTML = '';
+                
+                let pairCount = 0;
+                
+                window.currentParsedJsonMapping.forEach(item => {
+                    console.log('Adding pair:', item.key, '=', item.value);
+                    
+                    // Create pair manually since we might not have access to addPair function
+                    const pairId = 'pair-' + (++pairCount);
+                    const div = document.createElement('div');
+                    div.className = 'kv-pair-row';
+                    div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                    div.innerHTML = `
+                        <input type="text" class="kv-key" placeholder="Placeholder (e.g., {{name}})" value="${item.key}" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                        <input type="text" class="kv-value" placeholder="Replacement value" value="${item.value}" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                        <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;" onclick="this.parentElement.remove()">Remove</button>
+                    `;
+                    kvPairsContainer.appendChild(div);
+                });
+            }
+            
+            // Switch to manual view to show populated form
+            if (inputMethodJson) inputMethodJson.style.display = 'none';
+            if (inputMethodManual) inputMethodManual.style.display = 'block';
+            
+            // Auto-select party type and show replacement mode section
+            autoSelectPartyTypeFromMapping(window.currentParsedJsonMapping);
+            const replacementModeSection = document.getElementById('replacementModeSection');
+            if (replacementModeSection) {
+                replacementModeSection.style.display = 'block';
+            }
+            
+            console.log('Successfully populated form with JSON data');
+        }
+
+        // Global Exhibit A functionality
+        let exhibitParcels = [];
+        let currentExhibitString = '';
+
+        function openExhibitAModal() {
+            console.log('Opening Exhibit A modal');
+            const modal = document.getElementById('exhibitAModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                initializeExhibitA();
+            }
+        }
+
+        function initializeExhibitA() {
+            console.log('Initializing Exhibit A');
+            exhibitParcels = [];
+            currentExhibitString = '';
+            
+            // Reset form
+            document.getElementById('numParcelsInput').value = 1;
+            document.getElementById('parcelListContainer').innerHTML = '';
+            document.getElementById('exhibitPreviewSection').style.display = 'none';
+            
+            // Create initial parcel
+            addParcel();
+        }
+
+        function addParcel() {
+            const container = document.getElementById('parcelListContainer');
+            const parcelNumber = exhibitParcels.length + 1;
+            
+            const parcelDiv = document.createElement('div');
+            parcelDiv.className = 'parcel-item';
+            parcelDiv.style = 'background:rgba(0,191,255,0.1); border-radius:8px; padding:1rem; margin-bottom:1rem; border:1px solid rgba(0,191,255,0.3);';
+            
+            parcelDiv.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h4 style="color:#00bfff; margin:0;">Parcel ${parcelNumber}</h4>
+                    <button type="button" class="remove-parcel-btn" style="background:#ff6b6b; color:white; border:none; padding:0.25rem 0.5rem; border-radius:4px; cursor:pointer;" onclick="removeParcel(this)">Remove</button>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div>
+                        <label style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Parcel Number:</label>
+                        <input type="text" class="parcel-number" value="${parcelNumber}" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
+                    </div>
+                    <div>
+                        <label style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Type:</label>
+                        <select class="parcel-type" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
+                            <option value="false">Regular Parcel</option>
+                            <option value="true">Portion</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-top:1rem;">
+                    <label style="color:#b5e0ff; font-weight:600; display:block; margin-bottom:0.5rem;">Template Type:</label>
+                    <select class="template-type" style="width:100%; padding:0.5rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
+                        <option value="normal_portion">Normal Portion</option>
+                        <option value="portion_description">Portion Description</option>
+                        <option value="custom_template_1">Custom Template 1</option>
+                        <option value="custom_template_2">Custom Template 2</option>
+                    </select>
+                </div>
+            `;
+            
+            container.appendChild(parcelDiv);
+            
+            // Add to parcels array
+            exhibitParcels.push({
+                parcelNumber: parcelNumber,
+                isPortion: false,
+                templateType: 'normal_portion'
+            });
+            
+            console.log('Added parcel:', parcelNumber);
+        }
+
+        function removeParcel(button) {
+            const parcelDiv = button.closest('.parcel-item');
+            const parcelIndex = Array.from(parcelDiv.parentNode.children).indexOf(parcelDiv);
+            
+            if (exhibitParcels.length > 1) {
+                parcelDiv.remove();
+                exhibitParcels.splice(parcelIndex, 1);
+                updateParcelNumbers();
+                console.log('Removed parcel at index:', parcelIndex);
+            } else {
+                alert('At least one parcel is required.');
+            }
+        }
+
+        function updateParcelNumbers() {
+            const parcelItems = document.querySelectorAll('.parcel-item');
+            parcelItems.forEach((item, index) => {
+                const parcelNumber = index + 1;
+                item.querySelector('h4').textContent = `Parcel ${parcelNumber}`;
+                item.querySelector('.parcel-number').value = parcelNumber;
+                
+                if (exhibitParcels[index]) {
+                    exhibitParcels[index].parcelNumber = parcelNumber;
+                }
+            });
+        }
+
+        async function generateExhibitString() {
+            console.log('Generating exhibit string');
+            
+            try {
+                // Update parcels array with current form values
+                const parcelItems = document.querySelectorAll('.parcel-item');
+                exhibitParcels = [];
+                
+                parcelItems.forEach((item, index) => {
+                    const parcelNumber = item.querySelector('.parcel-number').value.trim() || (index + 1);
+                    const isPortion = item.querySelector('.parcel-type').value === 'true';
+                    const templateType = item.querySelector('.template-type').value;
+                    
+                    exhibitParcels.push({
+                        parcelNumber: parcelNumber,
+                        isPortion: isPortion,
+                        templateType: templateType
+                    });
+                });
+                
+                console.log('Parcels to send:', exhibitParcels);
+                
+                // Show loading state
+                const generateBtn = document.getElementById('generateExhibitStringBtn');
+                const originalText = generateBtn.textContent;
+                generateBtn.textContent = 'Generating...';
+                generateBtn.disabled = true;
+                
+                // Call backend API
+                const response = await fetch('/gen_exhibit_a', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        parcels: exhibitParcels
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // Restore button state
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+                
+                if (result.success) {
+                    currentExhibitString = result.exhibit_string;
+                    document.getElementById('exhibitPreview').value = currentExhibitString;
+                    document.getElementById('exhibitPreviewSection').style.display = 'block';
+                    console.log('Generated exhibit string successfully');
+                } else {
+                    alert('Error generating exhibit: ' + (result.error || 'Unknown error'));
+                }
+                
+            } catch (error) {
+                console.error('Error generating exhibit string:', error);
+                alert('Error generating exhibit: ' + error.message);
+                
+                // Restore button state
+                const generateBtn = document.getElementById('generateExhibitStringBtn');
+                generateBtn.textContent = 'Generate Exhibit String';
+                generateBtn.disabled = false;
+            }
+        }
+
+        function addExhibitToForm() {
+            if (!currentExhibitString) {
+                alert('No exhibit string generated yet.');
+                return;
+            }
+            
+            // Add to main form
+            const kvPairsContainer = document.getElementById('kvPairsContainer');
+            if (kvPairsContainer) {
+                // Create new pair for Exhibit A
+                const div = document.createElement('div');
+                div.className = 'kv-pair-row';
+                div.style = 'display:flex; gap:1rem; align-items:center; margin-bottom:1rem;';
+                div.innerHTML = `
+                    <input type="text" class="kv-key" value="[Exhibit A]" style="flex:2; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;" required>
+                    <textarea class="kv-value" style="flex:3; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; min-height:100px;" required>${currentExhibitString}</textarea>
+                    <button type="button" class="secondary-btn remove-pair-btn" style="padding:0.5rem 1rem;" onclick="this.parentElement.remove()">Remove</button>
+                `;
+                kvPairsContainer.appendChild(div);
+                
+                // Close modal
+                document.getElementById('exhibitAModal').style.display = 'none';
+                
+                // Show manual input section
+                const inputMethodJson = document.getElementById('inputMethodJson');
+                const inputMethodManual = document.getElementById('inputMethodManual');
+                if (inputMethodJson) inputMethodJson.style.display = 'none';
+                if (inputMethodManual) inputMethodManual.style.display = 'block';
+                
+                console.log('Added Exhibit A to form');
+            }
+        }
+
+        function copyExhibitToClipboard() {
+            const exhibitPreview = document.getElementById('exhibitPreview');
+            if (exhibitPreview && currentExhibitString) {
+                exhibitPreview.select();
+                document.execCommand('copy');
+                
+                const copyBtn = document.getElementById('copyExhibitBtn');
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => {
+                    copyBtn.textContent = 'Copy to Clipboard';
+                }, 2000);
+            }
+        }
+
+        // Event handlers setup
+        function setupExhibitAHandlers() {
+            // Open modal button
+            const generateExhibitABtn = document.getElementById('generateExhibitABtn');
+            if (generateExhibitABtn) {
+                generateExhibitABtn.onclick = openExhibitAModal;
+            }
+            
+            // Close modal
+            const closeExhibitAModal = document.getElementById('closeExhibitAModal');
+            const cancelExhibitABtn = document.getElementById('cancelExhibitABtn');
+            if (closeExhibitAModal) {
+                closeExhibitAModal.onclick = () => {
+                    document.getElementById('exhibitAModal').style.display = 'none';
+                };
+            }
+            if (cancelExhibitABtn) {
+                cancelExhibitABtn.onclick = () => {
+                    document.getElementById('exhibitAModal').style.display = 'none';
+                };
+            }
+            
+            // Add parcel button
+            const addParcelBtn = document.getElementById('addParcelBtn');
+            if (addParcelBtn) {
+                addParcelBtn.onclick = addParcel;
+            }
+            
+            // Generate string button
+            const generateExhibitStringBtn = document.getElementById('generateExhibitStringBtn');
+            if (generateExhibitStringBtn) {
+                generateExhibitStringBtn.onclick = generateExhibitString;
+            }
+            
+            // Add to form button
+            const addExhibitToFormBtn = document.getElementById('addExhibitToFormBtn');
+            if (addExhibitToFormBtn) {
+                addExhibitToFormBtn.onclick = addExhibitToForm;
+            }
+            
+            // Copy button
+            const copyExhibitBtn = document.getElementById('copyExhibitBtn');
+            if (copyExhibitBtn) {
+                copyExhibitBtn.onclick = copyExhibitToClipboard;
+            }
+            
+            // Number of parcels input change
+            const numParcelsInput = document.getElementById('numParcelsInput');
+            if (numParcelsInput) {
+                numParcelsInput.onchange = function() {
+                    const targetCount = parseInt(this.value) || 1;
+                    const currentCount = exhibitParcels.length;
+                    
+                    if (targetCount > currentCount) {
+                        // Add parcels
+                        for (let i = currentCount; i < targetCount; i++) {
+                            addParcel();
+                        }
+                    } else if (targetCount < currentCount) {
+                        // Remove parcels
+                        const container = document.getElementById('parcelListContainer');
+                        const parcelItems = container.querySelectorAll('.parcel-item');
+                        for (let i = currentCount - 1; i >= targetCount; i--) {
+                            if (parcelItems[i]) {
+                                parcelItems[i].remove();
+                                exhibitParcels.splice(i, 1);
+                            }
+                        }
+                        updateParcelNumbers();
+                    }
+                };
+            }
+        }
+
         // Activate Lease Population tab logic on DOMContentLoaded
-        document.addEventListener('DOMContentLoaded', activateLeasePopulationTab);
+        document.addEventListener('DOMContentLoaded', function() {
+            activateLeasePopulationTab();
+            setupExhibitAHandlers();
+        });
 
         // After parsing any table (upload or paste), auto-select Party Type if [Grantee Type], [Grantor Type], or [Grantee Name] is present
         function autoSelectPartyTypeFromMapping(mapping) {

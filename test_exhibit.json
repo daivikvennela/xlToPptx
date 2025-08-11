@@ -1,0 +1,34 @@
+[
+  {
+    "key": "[Company Name]",
+    "value": "Texas Land Holdings LLC"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "Entity"
+  },
+  {
+    "key": "[Grantor Type]",
+    "value": "Entity"
+  },
+  {
+    "key": "[State]",
+    "value": "Texas"
+  },
+  {
+    "key": "[County]",
+    "value": "Harris"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "1"
+  },
+  {
+    "key": "# of Parcels",
+    "value": "3"
+  },
+  {
+    "key": "[Property Description]",
+    "value": "Multiple parcels located in Harris County, Texas"
+  }
+]

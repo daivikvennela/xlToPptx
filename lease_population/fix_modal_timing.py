@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 
 def fix_modal_timing():
-    """Move modal creation to happen immediately when page loads"""
+    """Move modal creation to happen immediately when page loads
+    
+    This script is used to fix the modal timing issue. 
+    The modal is created when the page loads, but the button is created after the modal is created. 
+    This causes the modal to be created after the button is created, which is not what we want. 
+    The script is used to move the modal creation to happen immediately when the page loads. 
+    This is done by adding the modal creation code to the beginning of the script. 
+    
+    """
     
     # Read the file
     with open('templates/index.html', 'r') as f:

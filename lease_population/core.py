@@ -17,7 +17,7 @@ from docx.shared import Pt
 from flask import jsonify, send_file
 from .utils import normalize_placeholder_key, strip_brackets
 from .image_handler import ImageEmbeddingHandler
-from .block_replacer import embedImage, generate_signature_block, generate_notary_block
+from .block_replacer import embedImage, generate_signature_block, generate_notary_block, generator
 
 
 class LeasePopulationProcessor:
@@ -29,6 +29,86 @@ class LeasePopulationProcessor:
     def __init__(self):
         self.image_handler = ImageEmbeddingHandler()
     
+    def _auto_generate_signature_blocks(self, mapping: dict) -> dict:
+        """
+        Auto-generate [Signature Block] and [Signature Block With Notrary] values
+        based on detected party types and other relevant fields from the input mapping.
+        """
+        # Don't override if already provided
+        if '[Signature Block]' in mapping and mapping['[Signature Block]'].strip():
+            print("[INFO] [Signature Block] already provided, skipping auto-generation")
+        if '[Signature Block With Notrary]' in mapping and mapping['[Signature Block With Notrary]'].strip():
+            print("[INFO] [Signature Block With Notrary] already provided, skipping auto-generation")
+            
+        # If both are already provided, return as-is
+        if ('[Signature Block]' in mapping and mapping['[Signature Block]'].strip() and
+            '[Signature Block With Notrary]' in mapping and mapping['[Signature Block With Notrary]'].strip()):
+            return mapping
+        
+        # Detect party type from mapping
+        owner_type = self._detect_owner_type(mapping)
+        print(f"[INFO] Detected owner type: {owner_type}")
+        
+        # Get number of signatures (default to 1)
+        num_signatures = 1
+        if '[Number of Grantor Signatures]' in mapping:
+            try:
+                num_signatures = int(mapping['[Number of Grantor Signatures]'])
+            except (ValueError, TypeError):
+                num_signatures = 1
+        
+        # Generate signature block without notary
+        if '[Signature Block]' not in mapping or not mapping['[Signature Block]'].strip():
+            try:
+                signature_block = generator(owner_type, False, '', num_signatures)
+                mapping['[Signature Block]'] = signature_block
+                print(f"[INFO] Auto-generated [Signature Block] for {owner_type}")
+            except Exception as e:
+                print(f"[ERROR] Failed to generate signature block: {str(e)}")
+                mapping['[Signature Block]'] = f"[Auto-generated signature block for {owner_type}]"
+        
+        # Generate signature block with notary
+        if '[Signature Block With Notrary]' not in mapping or not mapping['[Signature Block With Notrary]'].strip():
+            try:
+                signature_with_notary = generator(owner_type, True, '', num_signatures)
+                mapping['[Signature Block With Notrary]'] = signature_with_notary
+                print(f"[INFO] Auto-generated [Signature Block With Notrary] for {owner_type}")
+            except Exception as e:
+                print(f"[ERROR] Failed to generate signature block with notary: {str(e)}")
+                mapping['[Signature Block With Notrary]'] = f"[Auto-generated signature block with notary for {owner_type}]"
+        
+        return mapping
+    
+    def _detect_owner_type(self, mapping: dict) -> str:
+        """
+        Detect the owner type from the mapping based on available fields.
+        Priority: [Owner Type] > [Grantor Type] > [Grantee Type] > default to 'individual'
+        """
+        # Check for explicit owner type
+        for key in ['[Owner Type]', '[Grantor Type]', '[Grantee Type]']:
+            if key in mapping and mapping[key].strip():
+                owner_type = mapping[key].strip().lower()
+                
+                # Map variations to standard types
+                if owner_type in ['individual', 'person']:
+                    return 'individual'
+                elif owner_type in ['entity', 'corporation', 'corp']:
+                    return 'corporation'
+                elif owner_type in ['llc', 'limited liability company']:
+                    return 'llc'
+                elif owner_type in ['lp', 'limited partnership']:
+                    return 'lp'
+                elif owner_type in ['married couple', 'couple']:
+                    return 'married_couple'
+                elif owner_type in ['sole owner married couple', 'sole owner, married couple']:
+                    return 'Sole owner, married couple'
+                else:
+                    # Return the original value for any other type
+                    return mapping[key].strip()
+        
+        # Default to individual if no type detected
+        return 'individual'
+    
     def process_lease_population(self, docx_file, mapping_json, track_changes=False, 
                                document_name='lease_population_filled', image_file=None):
         """
@@ -37,6 +117,9 @@ class LeasePopulationProcessor:
         try:
             # Parse mapping
             mapping = self._parse_mapping(mapping_json)
+            
+            # Auto-generate signature blocks if not provided
+            mapping = self._auto_generate_signature_blocks(mapping)
             
             # Process image data
             mapping = self._process_image_data(mapping, image_file)
@@ -75,6 +158,9 @@ class LeasePopulationProcessor:
         try:
             # Parse mapping
             mapping = self._parse_mapping(mapping_json)
+            
+            # Auto-generate signature blocks if not provided
+            mapping = self._auto_generate_signature_blocks(mapping)
             
             # Process multiple image files
             mapping = self._process_multiple_images(mapping, image_files, watermark_text, target_format)

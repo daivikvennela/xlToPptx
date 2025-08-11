@@ -1,5 +1,20 @@
 """
 Enhanced image handling functionality for lease population
+
+
+
+
+
+
+
+
+the main custom function is the embed_image_enhanced function. 
+
+
+
+
+
+
 """
 
 import base64

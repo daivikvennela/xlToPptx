@@ -1,0 +1,26 @@
+[
+  {
+    "key": "[Grantor Name]",
+    "value": "Jane Doe"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "Individual"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "1"
+  },
+  {
+    "key": "[State]",
+    "value": "California"
+  },
+  {
+    "key": "[County]",
+    "value": "Los Angeles"
+  },
+  {
+    "key": "[Property Address]",
+    "value": "456 Oak Avenue, Los Angeles, CA 90210"
+  }
+]

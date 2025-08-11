@@ -1,0 +1,38 @@
+[
+  {
+    "key": "[Company Name]",
+    "value": "Acme Corporation"
+  },
+  {
+    "key": "[Date]",
+    "value": "December 15, 2024"
+  },
+  {
+    "key": "[Address]",
+    "value": "123 Main Street, Anytown, ST 12345"
+  },
+  {
+    "key": "[Owner Type]",
+    "value": "Entity"
+  },
+  {
+    "key": "[Grantor Type]",
+    "value": "Individual"
+  },
+  {
+    "key": "[Number of Grantor Signatures]",
+    "value": "2"
+  },
+  {
+    "key": "[Grantor Name]",
+    "value": "John Smith"
+  },
+  {
+    "key": "[State]",
+    "value": "Texas"
+  },
+  {
+    "key": "[County]",
+    "value": "Harris"
+  }
+]
