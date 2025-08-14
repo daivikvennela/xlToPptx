@@ -864,6 +864,7 @@
                 <!-- <li><a href="#" class="nav-link active" data-tab="develop">Develop</a></li> -->
                 <!-- <li><a href="#" class="nav-link" data-tab="templates">Templates</a></li> -->
                 <li><a href="#" class="nav-link active" data-tab="lease-population">Lease Population</a></li>
+                <li><a href="#" class="nav-link" data-tab="lease-population-simple">Lease (Simple)</a></li>
                 <!-- <li><a href="#" class="nav-link" data-tab="footnote-editor">Footnote Editor</a></li> -->
                 <!-- <li class="nav-item">
                     <a class="nav-link" href="/template_v2" style="color: white; background: purple;">Template Version 2</a>
@@ -1252,73 +1253,7 @@
                     </div>
                 </div>
                 
-                <div id="inputMethodManual" style="display:none;">
-                    <form id="kvForm" class="upload-form" autocomplete="off">
-                        <div id="kvPairsContainer">
-                            <!-- Dynamic key-value pairs will be inserted here -->
-                        </div>
-                        <!-- Temp Quick Fill Buttons - DISABLED/COMMENTED OUT -->
-                        <!--
-                        <div style="margin-bottom: 1rem;">
-                            <button type="button" class="secondary-btn" id="quickFillSigBlockBtnTemp" style="margin-right:1rem;" disabled>Quick Fill Signature Block Temp</button>
-                            <button type="button" class="secondary-btn" id="quickFillNotaryBlockBtnTemp" disabled>Quick Fill Notary Block Temp</button>
-                        </div>
-                        -->
-                        <button type="button" class="submit-btn" id="addPairBtn">Add another pair</button>
-                        <button type="button" class="secondary-btn" id="addImageUploadBtn" style="margin-left:1rem;">Add Image Upload</button>
-                        <button type="submit" class="submit-btn" style="margin-top:1rem;">Review Replacements</button>
-                        <div style="margin-top:1rem; display:flex; gap:1rem;">
-                            <button type="button" class="secondary-btn" id="exportJsonBtn" disabled>Export Mapping as JSON</button>
-                            <button type="button" class="secondary-btn" id="openSigNotBuilderBtn" disabled>Open Sig Block Builder</button>
-                        </div>
-                    </form>
-                </div>
-                <div id="inputMethodUpload" style="display:none;">
-                    <form id="tableUploadForm" class="upload-form" autocomplete="off" enctype="multipart/form-data">
-                        <input type="file" id="tableFileInput" accept=".csv,.xlsx,.xls" style="margin-bottom:1rem;">
-                        <button type="submit" class="submit-btn">Parse Table</button>
-                    </form>
-                    <div id="tableParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
-                    <div id="tablePreviewSection" style="display:none; margin-top:1rem;">
-                        <h3 style="color:#00bfff;">Parsed Replacement Table</h3>
-                        <table class="preview-table" id="tablePreviewTable">
-                            <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                        <button type="button" class="submit-btn" id="useParsedTableBtn" style="margin-top:1rem;">Use This Table</button>
-                    </div>
-                </div>
-                <div id="inputMethodPaste" style="display:none;">
-                    <form id="pasteTableForm" class="upload-form" autocomplete="off">
-                        <!-- Owner Type and Number of Signatures - DISABLED FOR NOW
-                        <div style="display:flex; gap:1rem; margin-bottom:1rem;">
-                            <div style="flex:2;">
-                                <label for="ownerTypeInput" style="color:#00bfff; font-weight:600;">Owner Type</label>
-                                <input type="text" id="ownerTypeInput" placeholder="e.g., Individual, Entity" style="width:100%; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
-                            </div>
-                            <div style="flex:1;">
-                                <label for="numSignaturesInput" style="color:#00bfff; font-weight:600;">Number of Signatures</label>
-                                <input type="number" id="numSignaturesInput" min="1" value="1" style="width:100%; padding:0.75rem; border-radius:6px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0;">
-                            </div>
-                        </div>
-                        -->
-                        <textarea id="pasteTableTextarea" placeholder="Paste your table here (tab-separated, as from Excel/Sheets)" style="width:100%; min-height:180px; margin-bottom:1rem; border-radius:8px; border:1px solid #00bfff; background:rgba(26,26,46,0.8); color:#e2e8f0; padding:1rem;"></textarea>
-                        <button type="submit" class="submit-btn">Parse Table</button>
-                        <!-- Show Owner/Signature Info - DISABLED FOR NOW
-                        <button type="button" class="secondary-btn" id="showOwnerSigPopupBtn" style="margin-left:1rem;">Show Owner/Signature Info</button>
-                        -->
-                    </form>
-                    <div id="pasteParseMsg" style="color:#ff6b6b; margin:1rem 0; display:none;"></div>
-                    <div id="pastePreviewSection" style="display:none; margin-top:1rem;">
-                        <div id="pasteDocNamePreview" style="color:#00bfff; margin-bottom:0.5rem;"></div>
-                        <h3 style="color:#00bfff;">Parsed Replacement Table</h3>
-                        <table class="preview-table" id="pastePreviewTable">
-                            <thead><tr><th>Placeholder</th><th>Replacement Value</th></tr></thead>
-                            <tbody></tbody>
-                        </table>
-                        <button type="button" class="submit-btn" id="usePastedTableBtn" style="margin-top:1rem;">Use This Table</button>
-                    </div>
-                </div>
+                
                 <!-- Owner/Signature Modal -->
                 <div id="ownerSigModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
                   <div style="background:#232347; color:#e2e8f0; border-radius:12px; padding:2rem; min-width:320px; max-width:90vw; position:relative; box-shadow:0 8px 32px #0008;">
@@ -1559,6 +1494,64 @@
 
             </div>
         </div>
+        <div class="tab-content" id="lease-population-simple-tab">
+            <div class="main-content">
+                <h1>Lease Population (Simple)</h1>
+
+                <div id="simpleJsonSection" style="margin-bottom:2rem;">
+                    <h3 style="color:#00bfff;">Upload JSON Mapping</h3>
+                    <div style="border:2px dashed #00bfff; border-radius:8px; padding:1.25rem; background:rgba(0,191,255,0.05);">
+                        <input type="file" id="simpleJsonInput" accept=".json" style="display:none;">
+                        <button type="button" class="submit-btn" id="simpleBrowseJsonBtn">Browse JSON</button>
+                    </div>
+                    <div id="simpleJsonInfo" style="display:none; margin-top:0.5rem;">
+                        <strong style="color:#00bfff;">Selected:</strong> <span id="simpleJsonName" style="color:#e2e8f0;"></span> <span id="simpleJsonSize" style="margin-left:0.5rem; color:#b5e0ff;"></span>
+                    </div>
+                    <div style="margin-top:0.75rem;">
+                        <button type="button" class="submit-btn" id="simpleParseJsonBtn" disabled>Parse JSON</button>
+                        <button type="button" class="secondary-btn" id="simpleClearJsonBtn" disabled>Clear</button>
+                    </div>
+                    <div id="simpleJsonParseStatus" style="display:none; margin-top:0.5rem;"></div>
+                    <div id="simpleJsonPreviewSection" style="display:none; margin-top:1rem;">
+                        <h4 style="color:#00bfff;">Parsed Key-Value Preview</h4>
+                        <div style="max-height:260px; overflow:auto; border:1px solid #00bfff; border-radius:6px;">
+                            <table class="preview-table" id="simpleJsonPreviewTable">
+                                <thead><tr><th>Key</th><th>Value</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="simpleDocxSection" style="margin-bottom:2rem;">
+                    <h3 style="color:#00bfff;">Upload DOCX</h3>
+                    <input type="file" id="simpleDocxInput" accept=".docx">
+                    <div id="simpleDocxInfo" style="display:none; margin-top:0.5rem;">
+                        <strong style="color:#00bfff;">Selected:</strong> <span id="simpleDocxName" style="color:#e2e8f0;"></span> <span id="simpleDocxSize" style="margin-left:0.5rem; color:#b5e0ff;"></span>
+                    </div>
+                </div>
+
+                <div id="simpleExhibitSection" style="margin-bottom:2rem;">
+                    <h3 style="color:#00bfff;">Generate Exhibit A (Simple)</h3>
+                    <p style="color:#b5e0ff;">Assume parcels are not portions. Enter parcel descriptions only.</p>
+                    <div style="margin-bottom:0.5rem;">
+                        <label style="color:#e2e8f0;"># of Parcels</label>
+                        <input type="number" id="simpleNumParcels" min="0" value="0" style="width:6rem;">
+                        <button type="button" class="secondary-btn" id="simpleBuildParcelsBtn">Build Fields</button>
+                    </div>
+                    <div id="simpleParcelsContainer" style="display:grid; gap:0.5rem;"></div>
+                    <div style="margin-top:0.75rem;">
+                        <button type="button" class="secondary-btn" id="simpleGenerateExhibitBtn">Generate Exhibit A</button>
+                    </div>
+                    <div id="simpleExhibitStatus" style="display:none; margin-top:0.5rem;"></div>
+                </div>
+
+                <div style="margin-top:1rem;">
+                    <button type="button" class="submit-btn" id="simpleStartBtn" disabled>Start Replacement</button>
+                    <div id="simpleSubmitStatus" style="display:none; margin-top:0.75rem;"></div>
+                </div>
+            </div>
+        </div>
 
         <!-- FOOTNOTE EDITOR TAB - COMMENTED OUT
         <!-- Footnote Editor Tab -->
@@ -1621,7 +1614,7 @@
             </div>
         </div>
     </div>
-        END FOOTNOTE EDITOR TAB COMMENT -->
+        Lease_mvp_2 v1
 
     <!-- Party Type Checkpoint Modal -->
     <div id="partyTypeModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center;">
@@ -3165,6 +3158,199 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
         // Activate Lease Population tab logic on DOMContentLoaded
         document.addEventListener('DOMContentLoaded', activateLeasePopulationTab);
 
+        // Initialize Lease (Simple) tab logic
+        document.addEventListener('DOMContentLoaded', function() {
+            const simpleTab = document.getElementById('lease-population-simple-tab');
+            if (!simpleTab) return;
+
+            const simpleJsonInput = simpleTab.querySelector('#simpleJsonInput');
+            const simpleBrowseJsonBtn = simpleTab.querySelector('#simpleBrowseJsonBtn');
+            const simpleJsonInfo = simpleTab.querySelector('#simpleJsonInfo');
+            const simpleJsonName = simpleTab.querySelector('#simpleJsonName');
+            const simpleJsonSize = simpleTab.querySelector('#simpleJsonSize');
+            const simpleParseJsonBtn = simpleTab.querySelector('#simpleParseJsonBtn');
+            const simpleClearJsonBtn = simpleTab.querySelector('#simpleClearJsonBtn');
+            const simpleJsonParseStatus = simpleTab.querySelector('#simpleJsonParseStatus');
+            const simpleJsonPreviewSection = simpleTab.querySelector('#simpleJsonPreviewSection');
+            const simpleJsonPreviewTable = simpleTab.querySelector('#simpleJsonPreviewTable').querySelector('tbody');
+
+            const simpleDocxInput = simpleTab.querySelector('#simpleDocxInput');
+            const simpleDocxInfo = simpleTab.querySelector('#simpleDocxInfo');
+            const simpleDocxName = simpleTab.querySelector('#simpleDocxName');
+            const simpleDocxSize = simpleTab.querySelector('#simpleDocxSize');
+
+            const simpleStartBtn = simpleTab.querySelector('#simpleStartBtn');
+            const simpleSubmitStatus = simpleTab.querySelector('#simpleSubmitStatus');
+
+            const simpleNumParcels = simpleTab.querySelector('#simpleNumParcels');
+            const simpleBuildParcelsBtn = simpleTab.querySelector('#simpleBuildParcelsBtn');
+            const simpleParcelsContainer = simpleTab.querySelector('#simpleParcelsContainer');
+            const simpleGenerateExhibitBtn = simpleTab.querySelector('#simpleGenerateExhibitBtn');
+            const simpleExhibitStatus = simpleTab.querySelector('#simpleExhibitStatus');
+
+            let parsedJsonMapping = [];
+
+            function updateStartEnabled() {
+                simpleStartBtn.disabled = !(parsedJsonMapping.length > 0 && simpleDocxInput.files && simpleDocxInput.files[0]);
+            }
+
+            if (simpleBrowseJsonBtn) {
+                simpleBrowseJsonBtn.onclick = function() { if (simpleJsonInput) simpleJsonInput.click(); };
+            }
+
+            if (simpleJsonInput) {
+                simpleJsonInput.onchange = function() {
+                    const file = simpleJsonInput.files[0];
+                    if (file) {
+                        if (simpleJsonName) simpleJsonName.textContent = file.name;
+                        if (simpleJsonSize) simpleJsonSize.textContent = `(${(file.size/1024).toFixed(1)} KB)`;
+                        if (simpleJsonInfo) simpleJsonInfo.style.display = 'block';
+                        if (simpleParseJsonBtn) simpleParseJsonBtn.disabled = false;
+                        if (simpleClearJsonBtn) simpleClearJsonBtn.disabled = false;
+                        if (simpleJsonParseStatus) simpleJsonParseStatus.style.display = 'none';
+                        if (simpleJsonPreviewSection) simpleJsonPreviewSection.style.display = 'none';
+                        updateStartEnabled();
+                    }
+                };
+            }
+
+            if (simpleClearJsonBtn) {
+                simpleClearJsonBtn.onclick = function() {
+                    if (simpleJsonInput) simpleJsonInput.value = '';
+                    if (simpleJsonInfo) simpleJsonInfo.style.display = 'none';
+                    if (simpleParseJsonBtn) simpleParseJsonBtn.disabled = true;
+                    if (simpleClearJsonBtn) simpleClearJsonBtn.disabled = true;
+                    if (simpleJsonParseStatus) simpleJsonParseStatus.style.display = 'none';
+                    if (simpleJsonPreviewSection) simpleJsonPreviewSection.style.display = 'none';
+                    parsedJsonMapping = [];
+                    if (simpleJsonPreviewTable) simpleJsonPreviewTable.innerHTML = '';
+                    updateStartEnabled();
+                };
+            }
+
+            if (simpleParseJsonBtn) {
+                simpleParseJsonBtn.onclick = async function() {
+                    const file = simpleJsonInput && simpleJsonInput.files ? simpleJsonInput.files[0] : null;
+                    if (!file) return;
+                    try {
+                        if (simpleJsonParseStatus) {
+                            simpleJsonParseStatus.style.display = 'block';
+                            simpleJsonParseStatus.innerHTML = '<div style="color:#00bfff;">Parsing JSON...</div>';
+                        }
+                        const text = await file.text();
+                        const jsonData = JSON.parse(text);
+                        parsedJsonMapping = [];
+                        if (Array.isArray(jsonData)) {
+                            parsedJsonMapping = jsonData.filter(item => item && item.key && item.value);
+                        } else if (jsonData && typeof jsonData === 'object') {
+                            parsedJsonMapping = Object.entries(jsonData).map(([k, v]) => ({ key: String(k), value: String(v) }));
+                        }
+                        if (!parsedJsonMapping.length) throw new Error('No valid key-value pairs found');
+                        if (simpleJsonPreviewTable) {
+                            simpleJsonPreviewTable.innerHTML = '';
+                            parsedJsonMapping.forEach(({key, value}) => {
+                                const tr = document.createElement('tr');
+                                tr.innerHTML = `<td>${key}</td><td>${value}</td>`;
+                                simpleJsonPreviewTable.appendChild(tr);
+                            });
+                        }
+                        if (simpleJsonParseStatus) simpleJsonParseStatus.innerHTML = `<div style="color:#00ff7f;">Parsed ${parsedJsonMapping.length} pairs</div>`;
+                        if (simpleJsonPreviewSection) simpleJsonPreviewSection.style.display = 'block';
+                    } catch (err) {
+                        if (simpleJsonParseStatus) {
+                            simpleJsonParseStatus.innerHTML = `<div style=\"color:#ff6b6b;\">Error: ${err.message}</div>`;
+                        }
+                        if (simpleJsonPreviewSection) simpleJsonPreviewSection.style.display = 'none';
+                    } finally {
+                        updateStartEnabled();
+                    }
+                };
+            }
+
+            if (simpleDocxInput) {
+                simpleDocxInput.onchange = function() {
+                    const f = simpleDocxInput.files[0];
+                    if (f) {
+                        if (simpleDocxInfo) simpleDocxInfo.style.display = 'block';
+                        if (simpleDocxName) simpleDocxName.textContent = f.name;
+                        if (simpleDocxSize) simpleDocxSize.textContent = `(${(f.size/1024).toFixed(1)} KB)`;
+                    } else if (simpleDocxInfo) {
+                        simpleDocxInfo.style.display = 'none';
+                    }
+                    updateStartEnabled();
+                };
+            }
+
+            if (simpleBuildParcelsBtn) {
+                simpleBuildParcelsBtn.onclick = function() {
+                    const n = parseInt((simpleNumParcels && simpleNumParcels.value) ? simpleNumParcels.value : '0', 10) || 0;
+                    if (simpleParcelsContainer) simpleParcelsContainer.innerHTML = '';
+                    for (let i = 1; i <= n; i++) {
+                        const div = document.createElement('div');
+                        div.innerHTML = `<label>Parcel ${i} Description</label><textarea class="simple-parcel" placeholder="Enter full parcel description"></textarea>`;
+                        if (simpleParcelsContainer) simpleParcelsContainer.appendChild(div);
+                    }
+                };
+            }
+
+            if (simpleGenerateExhibitBtn) {
+                simpleGenerateExhibitBtn.onclick = function() {
+                    const parcels = simpleParcelsContainer ? Array.from(simpleParcelsContainer.querySelectorAll('.simple-parcel')).map(t => t.value.trim()).filter(Boolean) : [];
+                    if (!parcels.length) {
+                        if (simpleExhibitStatus) {
+                            simpleExhibitStatus.style.display = 'block';
+                            simpleExhibitStatus.innerHTML = '<div style="color:#ff6b6b;">Please add at least one parcel description.</div>';
+                        }
+                        return;
+                    }
+                    const header = 'EXHIBIT A';
+                    const body = parcels.map((p, idx) => `Parcel ${idx+1}:\n${p}`).join('\n\n');
+                    const exhibitString = `${header}\n\n${body}`;
+                    const keyName = '[EXHIBIT A]';
+                    const idxExisting = parsedJsonMapping.findIndex(p => p.key && p.key.trim().toLowerCase() === keyName.toLowerCase());
+                    if (idxExisting >= 0) parsedJsonMapping[idxExisting].value = exhibitString; else parsedJsonMapping.push({ key: keyName, value: exhibitString });
+                    if (simpleExhibitStatus) {
+                        simpleExhibitStatus.style.display = 'block';
+                        simpleExhibitStatus.innerHTML = '<div style="color:#00ff7f;">Added Exhibit A to mapping.</div>';
+                    }
+                    updateStartEnabled();
+                };
+            }
+
+            if (simpleStartBtn) {
+                simpleStartBtn.onclick = async function() {
+                    if (!(parsedJsonMapping.length > 0 && simpleDocxInput && simpleDocxInput.files && simpleDocxInput.files[0])) return;
+                    if (simpleSubmitStatus) {
+                        simpleSubmitStatus.style.display = 'block';
+                        simpleSubmitStatus.innerHTML = '<div style="color:#00bfff;">Submitting...</div>';
+                    }
+                    const form = new FormData();
+                    form.append('docx', simpleDocxInput.files[0]);
+                    form.append('mapping', JSON.stringify(parsedJsonMapping));
+                    form.append('track_changes', 'false');
+                    try {
+                        const res = await fetch('/lease_population_replace', { method: 'POST', body: form });
+                        if (!res.ok) {
+                            let msg = `Request failed (${res.status})`;
+                            try { const data = await res.json(); if (data && data.error) msg = data.error; } catch {}
+                            throw new Error(msg);
+                        }
+                        const blob = await res.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'lease_population_filled.docx';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                        if (simpleSubmitStatus) simpleSubmitStatus.innerHTML = '<div style="color:#00ff7f;">Success! Download started.</div>';
+                    } catch (err) {
+                        if (simpleSubmitStatus) simpleSubmitStatus.innerHTML = `<div style=\"color:#ff6b6b;\">Error: ${err.message}</div>`;
+                    }
+                };
+            }
+        });
         // After parsing any table (upload or paste), auto-select Party Type if [Grantee Type], [Grantor Type], or [Grantee Name] is present
         function autoSelectPartyTypeFromMapping(mapping) {
             const partyRadios = document.querySelectorAll('input[name="partyType"]');
