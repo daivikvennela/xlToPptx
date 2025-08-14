@@ -1547,8 +1547,16 @@
                 </div>
 
                 <div style="margin-top:1rem;">
-                    <button type="button" class="submit-btn" id="simpleStartBtn" disabled>Start Replacement</button>
-                    <div id="simpleSubmitStatus" style="display:none; margin-top:0.75rem;"></div>
+                    <form id="simpleForm" method="post" action="/lease_simple" enctype="multipart/form-data" onsubmit="return submitSimpleLease(event)">
+                        <input type="hidden" name="track_changes" value="false">
+                        <input type="hidden" name="document_name" value="lease_population_filled">
+                        <input type="hidden" name="parcels" id="simpleParcelsHidden">
+                        <!-- Use explicit file inputs wired to the existing pickers -->
+                        <input type="file" name="json" id="simpleJsonInputProxy" accept=".json" style="display:none;">
+                        <input type="file" name="docx" id="simpleDocxInputProxy" accept=".docx" style="display:none;">
+                        <button type="submit" class="submit-btn" id="simpleStartBtn" disabled>Start Replacement</button>
+                        <div id="simpleSubmitStatus" style="display:none; margin-top:0.75rem;"></div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -3181,6 +3189,10 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
 
             const simpleStartBtn = simpleTab.querySelector('#simpleStartBtn');
             const simpleSubmitStatus = simpleTab.querySelector('#simpleSubmitStatus');
+            const simpleForm = simpleTab.querySelector('#simpleForm');
+            const simpleParcelsHidden = simpleTab.querySelector('#simpleParcelsHidden');
+            const jsonProxy = simpleTab.querySelector('#simpleJsonInputProxy');
+            const docxProxy = simpleTab.querySelector('#simpleDocxInputProxy');
 
             const simpleNumParcels = simpleTab.querySelector('#simpleNumParcels');
             const simpleBuildParcelsBtn = simpleTab.querySelector('#simpleBuildParcelsBtn');
@@ -3317,38 +3329,51 @@ ${Object.entries(stats).map(([k, v]) => `  ${k}: ${v !== null ? v : 'N/A'}`).joi
                 };
             }
 
-            if (simpleStartBtn) {
-                simpleStartBtn.onclick = async function() {
-                    if (!(parsedJsonMapping.length > 0 && simpleDocxInput && simpleDocxInput.files && simpleDocxInput.files[0])) return;
-                    if (simpleSubmitStatus) {
-                        simpleSubmitStatus.style.display = 'block';
-                        simpleSubmitStatus.innerHTML = '<div style="color:#00bfff;">Submitting...</div>';
+            window.submitSimpleLease = function(e) {
+                e.preventDefault();
+                if (!(parsedJsonMapping.length > 0 && simpleDocxInput && simpleDocxInput.files && simpleDocxInput.files[0])) return false;
+                // sync file inputs to form proxies
+                if (jsonProxy && simpleJsonInput && simpleJsonInput.files && simpleJsonInput.files[0]) {
+                    // Cannot programmatically set FileList; instead, append via FormData below
+                }
+                // Collect parcels into hidden field as lines
+                if (simpleParcelsHidden && simpleParcelsContainer) {
+                    const parcels = Array.from(simpleParcelsContainer.querySelectorAll('.simple-parcel')).map(t => t.value.trim()).filter(Boolean);
+                    simpleParcelsHidden.value = parcels.join('\n');
+                }
+                if (simpleSubmitStatus) {
+                    simpleSubmitStatus.style.display = 'block';
+                    simpleSubmitStatus.innerHTML = '<div style="color:#00bfff;">Submitting...</div>';
+                }
+                // Build FormData manually (since we can't set file inputs programmatically on proxies)
+                const fd = new FormData();
+                fd.append('docx', simpleDocxInput.files[0]);
+                // Send the original JSON file, not parsed mapping
+                if (simpleJsonInput && simpleJsonInput.files && simpleJsonInput.files[0]) fd.append('json', simpleJsonInput.files[0]);
+                fd.append('track_changes', 'false');
+                fd.append('document_name', 'lease_population_filled');
+                if (simpleParcelsHidden && simpleParcelsHidden.value) fd.append('parcels', simpleParcelsHidden.value);
+                fetch('/lease_simple', { method: 'POST', body: fd }).then(async (res) => {
+                    if (!res.ok) {
+                        let msg = `Request failed (${res.status})`;
+                        try { const data = await res.json(); if (data && data.error) msg = data.error; } catch {}
+                        throw new Error(msg);
                     }
-                    const form = new FormData();
-                    form.append('docx', simpleDocxInput.files[0]);
-                    form.append('mapping', JSON.stringify(parsedJsonMapping));
-                    form.append('track_changes', 'false');
-                    try {
-                        const res = await fetch('/lease_population_replace', { method: 'POST', body: form });
-                        if (!res.ok) {
-                            let msg = `Request failed (${res.status})`;
-                            try { const data = await res.json(); if (data && data.error) msg = data.error; } catch {}
-                            throw new Error(msg);
-                        }
-                        const blob = await res.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = 'lease_population_filled.docx';
-                        document.body.appendChild(a);
-                        a.click();
-                        a.remove();
-                        window.URL.revokeObjectURL(url);
-                        if (simpleSubmitStatus) simpleSubmitStatus.innerHTML = '<div style="color:#00ff7f;">Success! Download started.</div>';
-                    } catch (err) {
-                        if (simpleSubmitStatus) simpleSubmitStatus.innerHTML = `<div style=\"color:#ff6b6b;\">Error: ${err.message}</div>`;
-                    }
-                };
+                    return res.blob();
+                }).then((blob) => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'lease_population_filled.docx';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    if (simpleSubmitStatus) simpleSubmitStatus.innerHTML = '<div style="color:#00ff7f;">Success! Download started.</div>';
+                }).catch((err) => {
+                    if (simpleSubmitStatus) simpleSubmitStatus.innerHTML = `<div style=\"color:#ff6b6b;\">Error: ${err.message}</div>`;
+                });
+                return false;
             }
         });
         // After parsing any table (upload or paste), auto-select Party Type if [Grantee Type], [Grantor Type], or [Grantee Name] is present

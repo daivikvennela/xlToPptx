@@ -31,6 +31,7 @@ from lease_population.block_replacer import getSigBlock, getNotaryBlock, generat
 
 # --- Lease Population Module Integration ---
 from lease_population import register_lease_population_routes
+from lease_simple import register_lease_simple_routes
 
 
 app = Flask(__name__)
@@ -295,7 +296,7 @@ def get_dynamic_block_preview():
     if party_type == 'individual':
         sig_file = os.path.join(base, 'individual_signature.txt')
         notary_file = os.path.join(base, 'individual_notary.txt')
-    else:
+            else:
         sig_file = os.path.join(base, 'entity_signature.txt')
         notary_file = os.path.join(base, 'entity_notary.txt')
     try:
@@ -542,7 +543,7 @@ def test_image_embedding_comprehensive():
         
         else:
             return jsonify({'error': 'No test file provided'}), 400
-            
+        
     except Exception as e:
         import traceback
         error_traceback = traceback.format_exc()
@@ -550,8 +551,9 @@ def test_image_embedding_comprehensive():
         print(f"[TEST TRACEBACK] {error_traceback}")
         return jsonify({'error': f'Test failed: {str(e)}', 'traceback': error_traceback}), 500
 
-# Register lease population routes
+# Register routes
 register_lease_population_routes(app)
+register_lease_simple_routes(app)
 
 if __name__ == '__main__':
     import os
